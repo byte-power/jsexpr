@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/antonmedv/expr/compiler"
-	"github.com/antonmedv/expr/conf"
-	"github.com/antonmedv/expr/parser"
-	"github.com/antonmedv/expr/vm"
+	"github.com/byte-power/jsexpr/compiler"
+	"github.com/byte-power/jsexpr/conf"
+	"github.com/byte-power/jsexpr/parser"
+	"github.com/byte-power/jsexpr/vm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

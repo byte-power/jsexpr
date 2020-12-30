@@ -1,4 +1,4 @@
-package expr_test
+package jsexpr_test
 
 import (
 	"encoding/json"
@@ -8,16 +8,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/antonmedv/expr/ast"
-	"github.com/antonmedv/expr/file"
+	"github.com/byte-power/jsexpr"
+	"github.com/byte-power/jsexpr/ast"
+	"github.com/byte-power/jsexpr/file"
 
-	"github.com/antonmedv/expr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func ExampleEval() {
-	output, err := expr.Eval("greet + name", map[string]interface{}{
+	output, err := jsexpr.Eval("greet + name", map[string]interface{}{
 		"greet": "Hello, ",
 		"name":  "world!",
 	})
@@ -32,7 +32,7 @@ func ExampleEval() {
 }
 
 func ExampleEval_runtime_error() {
-	_, err := expr.Eval(`map(1..3, {1 / (# - 3)})`, nil)
+	_, err := jsexpr.Eval(`map(1..3, {1 / (# - 3)})`, nil)
 	fmt.Print(err)
 
 	// Output: runtime error: integer divide by zero (1:14)
@@ -46,13 +46,13 @@ func ExampleCompile() {
 		"bar": 99,
 	}
 
-	program, err := expr.Compile("foo in 1..99 and bar in 1..99", expr.Env(env))
+	program, err := jsexpr.Compile("foo in 1..99 and bar in 1..99", jsexpr.Env(env))
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
 	}
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -82,7 +82,7 @@ func ExampleEnv() {
 
 	code := `all(Segments, {.Origin == "MOW"}) && Passengers.Adults > 0 && Tags["foo"] startsWith "bar"`
 
-	program, err := expr.Compile(code, expr.Env(Env{}))
+	program, err := jsexpr.Compile(code, jsexpr.Env(Env{}))
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -103,7 +103,7 @@ func ExampleEnv() {
 		Marker: "test",
 	}
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -119,13 +119,13 @@ func ExampleAsBool() {
 		"foo": 0,
 	}
 
-	program, err := expr.Compile("foo >= 0", expr.Env(env), expr.AsBool())
+	program, err := jsexpr.Compile("foo >= 0", jsexpr.Env(env), jsexpr.AsBool())
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
 	}
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -141,7 +141,7 @@ func ExampleAsBool_error() {
 		"foo": 0,
 	}
 
-	_, err := expr.Compile("foo + 42", expr.Env(env), expr.AsBool())
+	_, err := jsexpr.Compile("foo + 42", jsexpr.Env(env), jsexpr.AsBool())
 
 	fmt.Printf("%v", err)
 
@@ -149,13 +149,13 @@ func ExampleAsBool_error() {
 }
 
 func ExampleAsFloat64() {
-	program, err := expr.Compile("42", expr.AsFloat64())
+	program, err := jsexpr.Compile("42", jsexpr.AsFloat64())
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
 	}
 
-	output, err := expr.Run(program, nil)
+	output, err := jsexpr.Run(program, nil)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -167,7 +167,7 @@ func ExampleAsFloat64() {
 }
 
 func ExampleAsFloat64_error() {
-	_, err := expr.Compile(`!!true`, expr.AsFloat64())
+	_, err := jsexpr.Compile(`!!true`, jsexpr.AsFloat64())
 
 	fmt.Printf("%v", err)
 
@@ -179,13 +179,13 @@ func ExampleAsInt64() {
 		"rating": 5.5,
 	}
 
-	program, err := expr.Compile("rating", expr.Env(env), expr.AsInt64())
+	program, err := jsexpr.Compile("rating", jsexpr.Env(env), jsexpr.AsInt64())
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
 	}
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -209,13 +209,13 @@ func ExampleOperator() {
 		After     func(a, b time.Time) bool
 	}
 
-	options := []expr.Option{
-		expr.Env(Env{}),
-		expr.Operator(">", "After"),
-		expr.Operator("-", "Sub"),
+	options := []jsexpr.Option{
+		jsexpr.Env(Env{}),
+		jsexpr.Operator(">", "After"),
+		jsexpr.Operator("-", "Sub"),
 	}
 
-	program, err := expr.Compile(code, options...)
+	program, err := jsexpr.Compile(code, options...)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -228,7 +228,7 @@ func ExampleOperator() {
 		After:     func(a, b time.Time) bool { return a.After(b) },
 	}
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -254,12 +254,12 @@ func ExampleConstExpr() {
 		"dyn": 0,
 	}
 
-	options := []expr.Option{
-		expr.Env(env),
-		expr.ConstExpr("fib"), // Mark fib func as constant expression.
+	options := []jsexpr.Option{
+		jsexpr.Env(env),
+		jsexpr.ConstExpr("fib"), // Mark fib func as constant expression.
 	}
 
-	program, err := expr.Compile(code, options...)
+	program, err := jsexpr.Compile(code, options...)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -268,7 +268,7 @@ func ExampleConstExpr() {
 	// Only fib(5) and fib(6) calculated on Compile, fib(dyn) can be called at runtime.
 	env["dyn"] = 7
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -286,18 +286,18 @@ func ExampleAllowUndefinedVariables() {
 		"sprintf": fmt.Sprintf,
 	}
 
-	options := []expr.Option{
-		expr.Env(env),
-		expr.AllowUndefinedVariables(), // Allow to use undefined variables.
+	options := []jsexpr.Option{
+		jsexpr.Env(env),
+		jsexpr.AllowUndefinedVariables(), // Allow to use undefined variables.
 	}
 
-	program, err := expr.Compile(code, options...)
+	program, err := jsexpr.Compile(code, options...)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
 	}
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -306,7 +306,7 @@ func ExampleAllowUndefinedVariables() {
 
 	env["name"] = "you" // Define variables later on.
 
-	output, err = expr.Run(program, env)
+	output, err = jsexpr.Run(program, env)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -324,12 +324,12 @@ func ExampleAllowUndefinedVariables_zero_value() {
 	// will have it as default value.
 	env := map[string]string{}
 
-	options := []expr.Option{
-		expr.Env(env),
-		expr.AllowUndefinedVariables(), // Allow to use undefined variables.
+	options := []jsexpr.Option{
+		jsexpr.Env(env),
+		jsexpr.AllowUndefinedVariables(), // Allow to use undefined variables.
 	}
 
-	program, err := expr.Compile(code, options...)
+	program, err := jsexpr.Compile(code, options...)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -340,7 +340,7 @@ func ExampleAllowUndefinedVariables_zero_value() {
 		"bar": "world!",
 	}
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -356,18 +356,18 @@ func ExampleAllowUndefinedVariables_zero_value_functions() {
 	// Env is map[string]string type on which methods are defined.
 	env := mockMapStringStringEnv{}
 
-	options := []expr.Option{
-		expr.Env(env),
-		expr.AllowUndefinedVariables(), // Allow to use undefined variables.
+	options := []jsexpr.Option{
+		jsexpr.Env(env),
+		jsexpr.AllowUndefinedVariables(), // Allow to use undefined variables.
 	}
 
-	program, err := expr.Compile(code, options...)
+	program, err := jsexpr.Compile(code, options...)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
 	}
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -393,9 +393,9 @@ func ExamplePatch() {
 		}
 	*/
 
-	program, err := expr.Compile(
+	program, err := jsexpr.Compile(
 		`greet.you.world + "!"`,
-		expr.Patch(&patcher{}),
+		jsexpr.Patch(&patcher{}),
 	)
 	if err != nil {
 		fmt.Printf("%v", err)
@@ -409,7 +409,7 @@ func ExamplePatch() {
 		},
 	}
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -426,10 +426,10 @@ func TestOperator_struct(t *testing.T) {
 
 	code := `BirthDay == "2017-10-23"`
 
-	program, err := expr.Compile(code, expr.Env(&mockEnv{}), expr.Operator("==", "DateEqual"))
+	program, err := jsexpr.Compile(code, jsexpr.Env(&mockEnv{}), jsexpr.Operator("==", "DateEqual"))
 	require.NoError(t, err)
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	require.NoError(t, err)
 	require.Equal(t, true, output)
 }
@@ -441,15 +441,15 @@ func TestOperator_interface(t *testing.T) {
 
 	code := `Ticket == "$100" && "$100" == Ticket && Now != Ticket && Now == Now`
 
-	program, err := expr.Compile(
+	program, err := jsexpr.Compile(
 		code,
-		expr.Env(&mockEnv{}),
-		expr.Operator("==", "StringerStringEqual", "StringStringerEqual", "StringerStringerEqual"),
-		expr.Operator("!=", "NotStringerStringEqual", "NotStringStringerEqual", "NotStringerStringerEqual"),
+		jsexpr.Env(&mockEnv{}),
+		jsexpr.Operator("==", "StringerStringEqual", "StringStringerEqual", "StringerStringerEqual"),
+		jsexpr.Operator("!=", "NotStringerStringEqual", "NotStringStringerEqual", "NotStringerStringerEqual"),
 	)
 	require.NoError(t, err)
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	require.NoError(t, err)
 	require.Equal(t, true, output)
 }
@@ -463,10 +463,10 @@ func TestExpr_readme_example(t *testing.T) {
 
 	code := `sprintf(greet, names[0])`
 
-	program, err := expr.Compile(code, expr.Env(env))
+	program, err := jsexpr.Compile(code, jsexpr.Env(env))
 	require.NoError(t, err)
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	require.NoError(t, err)
 
 	require.Equal(t, "Hello, world!", output)
@@ -871,27 +871,27 @@ func TestExpr(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		program, err := expr.Compile(tt.code, expr.Env(&mockEnv{}))
+		program, err := jsexpr.Compile(tt.code, jsexpr.Env(&mockEnv{}))
 		require.NoError(t, err, "compile error")
 
-		got, err := expr.Run(program, env)
+		got, err := jsexpr.Run(program, env)
 		require.NoError(t, err, "execution error")
 
 		assert.Equal(t, tt.want, got, tt.code)
 	}
 
 	for _, tt := range tests {
-		program, err := expr.Compile(tt.code, expr.Optimize(false))
+		program, err := jsexpr.Compile(tt.code, jsexpr.Optimize(false))
 		require.NoError(t, err, "compile error")
 
-		got, err := expr.Run(program, env)
+		got, err := jsexpr.Run(program, env)
 		require.NoError(t, err, "execution error")
 
 		assert.Equal(t, tt.want, got, "unoptimized: "+tt.code)
 	}
 
 	for _, tt := range tests {
-		got, err := expr.Eval(tt.code, env)
+		got, err := jsexpr.Eval(tt.code, env)
 		require.NoError(t, err, "eval error")
 
 		assert.Equal(t, tt.want, got, "eval: "+tt.code)
@@ -899,13 +899,13 @@ func TestExpr(t *testing.T) {
 }
 
 func TestExpr_eval_with_env(t *testing.T) {
-	_, err := expr.Eval("true", expr.Env(map[string]interface{}{}))
+	_, err := jsexpr.Eval("true", jsexpr.Env(map[string]interface{}{}))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "misused")
 }
 
 func TestExpr_fetch_from_func(t *testing.T) {
-	_, err := expr.Eval("foo.Value", map[string]interface{}{
+	_, err := jsexpr.Eval("foo.Value", map[string]interface{}{
 		"foo": func() {},
 	})
 	assert.Error(t, err)
@@ -920,10 +920,10 @@ func TestExpr_map_default_values(t *testing.T) {
 
 	input := `foo['missing'] == '' && bar['missing'] == nil`
 
-	program, err := expr.Compile(input, expr.Env(env))
+	program, err := jsexpr.Compile(input, jsexpr.Env(env))
 	require.NoError(t, err)
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	require.NoError(t, err)
 	require.Equal(t, true, output)
 }
@@ -943,7 +943,7 @@ func TestExpr_map_default_values_compile_check(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		_, err := expr.Compile(tt.input, expr.Env(tt.env), expr.AllowUndefinedVariables())
+		_, err := jsexpr.Compile(tt.input, jsexpr.Env(tt.env), jsexpr.AllowUndefinedVariables())
 		require.NoError(t, err)
 	}
 }
@@ -958,15 +958,15 @@ func TestExpr_calls_with_nil(t *testing.T) {
 		"is": is{},
 	}
 
-	p, err := expr.Compile(
+	p, err := jsexpr.Compile(
 		"a == nil && equals(b, nil) && is.Nil(c)",
-		expr.Env(env),
-		expr.Operator("==", "equals"),
-		expr.AllowUndefinedVariables(),
+		jsexpr.Env(env),
+		jsexpr.Operator("==", "equals"),
+		jsexpr.AllowUndefinedVariables(),
 	)
 	require.NoError(t, err)
 
-	out, err := expr.Run(p, env)
+	out, err := jsexpr.Run(p, env)
 	require.NoError(t, err)
 	require.Equal(t, true, out)
 }
@@ -988,12 +988,12 @@ func TestExpr_call_floatarg_func_with_int(t *testing.T) {
 		{"1/1", 1.0},
 		{"1*1", 1.0},
 	} {
-		p, err := expr.Compile(
+		p, err := jsexpr.Compile(
 			fmt.Sprintf("cnv(%s)", each.input),
-			expr.Env(env))
+			jsexpr.Env(env))
 		require.NoError(t, err)
 
-		out, err := expr.Run(p, env)
+		out, err := jsexpr.Run(p, env)
 		require.NoError(t, err)
 		require.Equal(t, each.expected, out)
 	}
@@ -1004,10 +1004,10 @@ func TestConstExpr_error(t *testing.T) {
 		"divide": func(a, b int) int { return a / b },
 	}
 
-	_, err := expr.Compile(
+	_, err := jsexpr.Compile(
 		`1 + divide(1, 0)`,
-		expr.Env(env),
-		expr.ConstExpr("divide"),
+		jsexpr.Env(env),
+		jsexpr.ConstExpr("divide"),
 	)
 	require.Error(t, err)
 	require.Equal(t, "compile error: integer divide by zero (1:5)\n | 1 + divide(1, 0)\n | ....^", err.Error())
@@ -1018,56 +1018,56 @@ func TestConstExpr_error_wrong_type(t *testing.T) {
 		"divide": 0,
 	}
 
-	_, err := expr.Compile(
+	_, err := jsexpr.Compile(
 		`1 + divide(1, 0)`,
-		expr.Env(env),
-		expr.ConstExpr("divide"),
+		jsexpr.Env(env),
+		jsexpr.ConstExpr("divide"),
 	)
 	require.Error(t, err)
 	require.Equal(t, "const expression \"divide\" must be a function", err.Error())
 }
 
 func TestConstExpr_error_no_env(t *testing.T) {
-	_, err := expr.Compile(
+	_, err := jsexpr.Compile(
 		`1 + divide(1, 0)`,
-		expr.ConstExpr("divide"),
+		jsexpr.ConstExpr("divide"),
 	)
 	require.Error(t, err)
 	require.Equal(t, "no environment for const expression: divide", err.Error())
 }
 
 func TestPatch(t *testing.T) {
-	program, err := expr.Compile(
+	program, err := jsexpr.Compile(
 		`Ticket == "$100" and "$90" != Ticket + "0"`,
-		expr.Env(mockEnv{}),
-		expr.Patch(&stringerPatcher{}),
+		jsexpr.Env(mockEnv{}),
+		jsexpr.Patch(&stringerPatcher{}),
 	)
 	require.NoError(t, err)
 
 	env := mockEnv{
 		Ticket: &ticket{Price: 100},
 	}
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	require.NoError(t, err)
 	require.Equal(t, true, output)
 }
 
 func TestPatch_length(t *testing.T) {
-	program, err := expr.Compile(
+	program, err := jsexpr.Compile(
 		`String.length == 5`,
-		expr.Env(mockEnv{}),
-		expr.Patch(&lengthPatcher{}),
+		jsexpr.Env(mockEnv{}),
+		jsexpr.Patch(&lengthPatcher{}),
 	)
 	require.NoError(t, err)
 
 	env := mockEnv{String: "hello"}
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	require.NoError(t, err)
 	require.Equal(t, true, output)
 }
 
 func TestCompile_exposed_error(t *testing.T) {
-	_, err := expr.Compile(`1 == true`)
+	_, err := jsexpr.Compile(`1 == true`)
 	require.Error(t, err)
 
 	fileError, ok := err.(*file.Error)
@@ -1082,7 +1082,7 @@ func TestCompile_exposed_error(t *testing.T) {
 }
 
 func TestAsBool_exposed_error_(t *testing.T) {
-	_, err := expr.Compile(`42`, expr.AsBool())
+	_, err := jsexpr.Compile(`42`, jsexpr.AsBool())
 	require.Error(t, err)
 
 	_, ok := err.(*file.Error)
@@ -1091,7 +1091,7 @@ func TestAsBool_exposed_error_(t *testing.T) {
 }
 
 func TestEval_exposed_error(t *testing.T) {
-	_, err := expr.Eval(`1/0`, nil)
+	_, err := jsexpr.Eval(`1/0`, nil)
 	require.Error(t, err)
 
 	fileError, ok := err.(*file.Error)
@@ -1123,10 +1123,10 @@ func TestIssue105(t *testing.T) {
 		C.B.Field == 0
 	`
 
-	_, err := expr.Compile(code, expr.Env(Env{}))
+	_, err := jsexpr.Compile(code, jsexpr.Env(Env{}))
 	require.NoError(t, err)
 
-	_, err = expr.Compile(`Field == ''`, expr.Env(Env{}))
+	_, err = jsexpr.Compile(`Field == ''`, jsexpr.Env(Env{}))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "ambiguous identifier Field")
 }
@@ -1134,10 +1134,10 @@ func TestIssue105(t *testing.T) {
 func TestIssue_nested_closures(t *testing.T) {
 	code := `all(1..3, { all(1..3, { # > 0 }) and # > 0 })`
 
-	program, err := expr.Compile(code)
+	program, err := jsexpr.Compile(code)
 	require.NoError(t, err)
 
-	output, err := expr.Run(program, nil)
+	output, err := jsexpr.Run(program, nil)
 	require.NoError(t, err)
 	require.True(t, output.(bool))
 }
@@ -1145,11 +1145,11 @@ func TestIssue_nested_closures(t *testing.T) {
 func TestIssue138(t *testing.T) {
 	env := map[string]interface{}{}
 
-	_, err := expr.Compile(`1 / (1 - 1)`, expr.Env(env))
+	_, err := jsexpr.Compile(`1 / (1 - 1)`, jsexpr.Env(env))
 	require.Error(t, err)
 	require.Equal(t, "integer divide by zero (1:3)\n | 1 / (1 - 1)\n | ..^", err.Error())
 
-	_, err = expr.Compile(`1 % 0`, expr.Env(env))
+	_, err = jsexpr.Compile(`1 % 0`, jsexpr.Env(env))
 	require.Error(t, err)
 }
 

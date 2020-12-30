@@ -4,16 +4,16 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"github.com/antonmedv/expr/ast"
 	"io/ioutil"
 	"os"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/checker"
-	"github.com/antonmedv/expr/compiler"
-	"github.com/antonmedv/expr/optimizer"
-	"github.com/antonmedv/expr/parser"
-	"github.com/antonmedv/expr/vm"
+	"github.com/byte-power/jsexpr"
+	"github.com/byte-power/jsexpr/ast"
+	"github.com/byte-power/jsexpr/checker"
+	"github.com/byte-power/jsexpr/compiler"
+	"github.com/byte-power/jsexpr/optimizer"
+	"github.com/byte-power/jsexpr/parser"
+	"github.com/byte-power/jsexpr/vm"
 	"github.com/sanity-io/litter"
 )
 
@@ -152,7 +152,7 @@ func startRepl() {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		out, err := expr.Eval(line, nil)
+		out, err := jsexpr.Eval(line, nil)
 		if err != nil {
 			fmt.Printf("%v\n", err)
 			goto prompt

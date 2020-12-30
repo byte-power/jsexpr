@@ -9,7 +9,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/antonmedv/expr"
+	"github.com/byte-power/jsexpr"
 )
 
 func main() {
@@ -37,7 +37,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/antonmedv/expr"
+	"github.com/byte-power/jsexpr"
 )
 
 func main() {
@@ -74,7 +74,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/antonmedv/expr"
+	"github.com/byte-power/jsexpr"
 )
 
 type Env struct {

@@ -1,7 +1,7 @@
 # Expr 
-[![Build Status](https://travis-ci.org/antonmedv/expr.svg?branch=master)](https://travis-ci.org/antonmedv/expr) 
-[![Go Report Card](https://goreportcard.com/badge/github.com/antonmedv/expr)](https://goreportcard.com/report/github.com/antonmedv/expr) 
-[![GoDoc](https://godoc.org/github.com/antonmedv/expr?status.svg)](https://godoc.org/github.com/antonmedv/expr)
+[![Build Status](https://travis-ci.org/byte-power/jsexpr.svg?branch=master)](https://travis-ci.org/byte-power/jsexpr) 
+[![Go Report Card](https://goreportcard.com/badge/github.com/byte-power/jsexpr)](https://goreportcard.com/report/github.com/byte-power/jsexpr) 
+[![GoDoc](https://godoc.org/github.com/byte-power/jsexpr?status.svg)](https://godoc.org/github.com/byte-power/jsexpr)
 
 <img src="docs/images/logo-small.png" width="150" alt="expr logo" align="right">
 
@@ -27,7 +27,7 @@ product.Stock < 15
 ## Features
 
 * Seamless integration with Go (no need to redefine types)
-* Static typing ([example](https://godoc.org/github.com/antonmedv/expr#example-Env)).
+* Static typing ([example](https://godoc.org/github.com/byte-power/jsexpr#example-Env)).
   ```go
   out, err := expr.Compile(`name + age`)
   // err: invalid operation + (mismatched types string and int)
@@ -45,7 +45,7 @@ product.Stock < 15
 ## Install
 
 ```
-go get github.com/antonmedv/expr
+go get github.com/byte-power/jsexpr
 ```
 
 ## Documentation
@@ -72,7 +72,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/antonmedv/expr"
+	"github.com/byte-power/jsexpr"
 )
 
 func main() {
@@ -105,7 +105,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/antonmedv/expr"
+	"github.com/byte-power/jsexpr"
 )
 
 type Tweet struct {
@@ -155,7 +155,7 @@ Also expr provides powerful tool [exe](cmd/exe) for debugging. It has interactiv
 * <a href="https://crowdsec.net"><img alt="CrowdSec" height="18" src="https://crowdsec.net/wp-content/uploads/thegem-logos/logo_8b2bcaf21851f390f18ea9600e6a9fa3_1x.png"></a> [Crowdsec](https://crowdsec.net/) - A security automation tool.
 * [Mystery Minds](https://www.mysteryminds.com/en/) uses Expr to allow easy yet powerful customization of its matching algorithm.
 
-[Add your company too](https://github.com/antonmedv/expr/edit/master/README.md)
+[Add your company too](https://github.com/byte-power/jsexpr/edit/master/README.md)
 
 ## License
 

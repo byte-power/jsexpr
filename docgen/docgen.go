@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/antonmedv/expr/conf"
+	"github.com/byte-power/jsexpr/conf"
 )
 
 // Kind can be any of array, map, struct, func, string, int, float, bool or any.

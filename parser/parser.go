@@ -7,9 +7,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	. "github.com/antonmedv/expr/ast"
-	"github.com/antonmedv/expr/file"
-	. "github.com/antonmedv/expr/parser/lexer"
+	. "github.com/byte-power/jsexpr/ast"
+	"github.com/byte-power/jsexpr/file"
+	. "github.com/byte-power/jsexpr/parser/lexer"
 )
 
 type associativity int

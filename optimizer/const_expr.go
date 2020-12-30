@@ -2,10 +2,11 @@ package optimizer
 
 import (
 	"fmt"
-	. "github.com/antonmedv/expr/ast"
-	"github.com/antonmedv/expr/file"
 	"reflect"
 	"strings"
+
+	. "github.com/byte-power/jsexpr/ast"
+	"github.com/byte-power/jsexpr/file"
 )
 
 type constExpr struct {

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/antonmedv/expr"
+	"github.com/byte-power/jsexpr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,36 +14,36 @@ func TestExamples_dates(t *testing.T) {
 		Now() - CreatedAt > Duration("24h")
 	`
 
-	options := []expr.Option{
-		expr.Env(Env{}),
+	options := []jsexpr.Option{
+		jsexpr.Env(Env{}),
 
 		// Operators override for date comprising.
-		expr.Operator("==", "Equal"),
-		expr.Operator("<", "Before"),
-		expr.Operator("<=", "BeforeOrEqual"),
-		expr.Operator(">", "After"),
-		expr.Operator(">=", "AfterOrEqual"),
+		jsexpr.Operator("==", "Equal"),
+		jsexpr.Operator("<", "Before"),
+		jsexpr.Operator("<=", "BeforeOrEqual"),
+		jsexpr.Operator(">", "After"),
+		jsexpr.Operator(">=", "AfterOrEqual"),
 
 		// Time and duration manipulation.
-		expr.Operator("+", "Add"),
-		expr.Operator("-", "Sub"),
+		jsexpr.Operator("+", "Add"),
+		jsexpr.Operator("-", "Sub"),
 
 		// Operators override for duration comprising.
-		expr.Operator("==", "EqualDuration"),
-		expr.Operator("<", "BeforeDuration"),
-		expr.Operator("<=", "BeforeOrEqualDuration"),
-		expr.Operator(">", "AfterDuration"),
-		expr.Operator(">=", "AfterOrEqualDuration"),
+		jsexpr.Operator("==", "EqualDuration"),
+		jsexpr.Operator("<", "BeforeDuration"),
+		jsexpr.Operator("<=", "BeforeOrEqualDuration"),
+		jsexpr.Operator(">", "AfterDuration"),
+		jsexpr.Operator(">=", "AfterOrEqualDuration"),
 	}
 
-	program, err := expr.Compile(code, options...)
+	program, err := jsexpr.Compile(code, options...)
 	require.NoError(t, err)
 
 	env := Env{
 		CreatedAt: Env{}.Date("2018-07-14"), // first commit date
 	}
 
-	output, err := expr.Run(program, env)
+	output, err := jsexpr.Run(program, env)
 	require.NoError(t, err)
 	require.Equal(t, true, output)
 }

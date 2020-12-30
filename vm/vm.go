@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/antonmedv/expr/file"
+	"github.com/byte-power/jsexpr/file"
 )
 
 var (

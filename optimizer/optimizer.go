@@ -1,8 +1,8 @@
 package optimizer
 
 import (
-	. "github.com/antonmedv/expr/ast"
-	"github.com/antonmedv/expr/conf"
+	. "github.com/byte-power/jsexpr/ast"
+	"github.com/byte-power/jsexpr/conf"
 )
 
 func Optimize(node *Node, config *conf.Config) error {

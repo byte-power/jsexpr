@@ -6,11 +6,11 @@ import (
 	"math"
 	"reflect"
 
-	"github.com/antonmedv/expr/ast"
-	"github.com/antonmedv/expr/conf"
-	"github.com/antonmedv/expr/file"
-	"github.com/antonmedv/expr/parser"
-	. "github.com/antonmedv/expr/vm"
+	"github.com/byte-power/jsexpr/ast"
+	"github.com/byte-power/jsexpr/conf"
+	"github.com/byte-power/jsexpr/file"
+	"github.com/byte-power/jsexpr/parser"
+	. "github.com/byte-power/jsexpr/vm"
 )
 
 func Compile(tree *parser.Tree, config *conf.Config) (program *Program, err error) {

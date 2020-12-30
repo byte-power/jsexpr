@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/antonmedv/expr/ast"
-	"github.com/antonmedv/expr/conf"
-	"github.com/antonmedv/expr/file"
-	"github.com/antonmedv/expr/parser"
+	"github.com/byte-power/jsexpr/ast"
+	"github.com/byte-power/jsexpr/conf"
+	"github.com/byte-power/jsexpr/file"
+	"github.com/byte-power/jsexpr/parser"
 )
 
 func Check(tree *parser.Tree, config *conf.Config) (reflect.Type, error) {

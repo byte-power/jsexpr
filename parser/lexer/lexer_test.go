@@ -2,13 +2,14 @@ package lexer_test
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
 
-	"github.com/antonmedv/expr/file"
-	. "github.com/antonmedv/expr/parser/lexer"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/byte-power/jsexpr/file"
+	. "github.com/byte-power/jsexpr/parser/lexer"
 )
 
 type lexTest struct {

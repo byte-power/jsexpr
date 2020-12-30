@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/antonmedv/expr/file"
+	"github.com/byte-power/jsexpr/file"
 )
 
 type Program struct {

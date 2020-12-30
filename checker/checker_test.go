@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/checker"
-	"github.com/antonmedv/expr/conf"
-	"github.com/antonmedv/expr/parser"
+	"github.com/byte-power/jsexpr"
+	"github.com/byte-power/jsexpr/checker"
+	"github.com/byte-power/jsexpr/conf"
+	"github.com/byte-power/jsexpr/parser"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -503,7 +503,7 @@ func TestCheck_AsBool(t *testing.T) {
 	assert.NoError(t, err)
 
 	config := &conf.Config{}
-	expr.AsBool()(config)
+	jsexpr.AsBool()(config)
 
 	_, err = checker.Check(tree, config)
 	assert.Error(t, err)

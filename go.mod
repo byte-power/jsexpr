@@ -1,4 +1,4 @@
-module github.com/antonmedv/expr
+module github.com/byte-power/jsexpr
 
 go 1.13
 

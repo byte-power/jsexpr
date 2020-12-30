@@ -1,17 +1,18 @@
-package expr
+package jsexpr
 
 import (
 	"fmt"
-	"github.com/antonmedv/expr/ast"
-	"github.com/antonmedv/expr/file"
 	"reflect"
 
-	"github.com/antonmedv/expr/checker"
-	"github.com/antonmedv/expr/compiler"
-	"github.com/antonmedv/expr/conf"
-	"github.com/antonmedv/expr/optimizer"
-	"github.com/antonmedv/expr/parser"
-	"github.com/antonmedv/expr/vm"
+	"github.com/byte-power/jsexpr/ast"
+	"github.com/byte-power/jsexpr/file"
+
+	"github.com/byte-power/jsexpr/checker"
+	"github.com/byte-power/jsexpr/compiler"
+	"github.com/byte-power/jsexpr/conf"
+	"github.com/byte-power/jsexpr/optimizer"
+	"github.com/byte-power/jsexpr/parser"
+	"github.com/byte-power/jsexpr/vm"
 )
 
 // Option for configuring config.

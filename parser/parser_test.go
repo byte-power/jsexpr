@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/antonmedv/expr/ast"
-	"github.com/antonmedv/expr/parser"
+	"github.com/byte-power/jsexpr/ast"
+	"github.com/byte-power/jsexpr/parser"
 	"github.com/stretchr/testify/assert"
 )
 

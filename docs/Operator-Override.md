@@ -12,7 +12,7 @@ To use `-` operator:
 Now() - CreatedAt
 ```
 
-To override operator use [expr.Operator](https://pkg.go.dev/github.com/antonmedv/expr?tab=doc#Operator):
+To override operator use [expr.Operator](https://pkg.go.dev/github.com/byte-power/jsexpr?tab=doc#Operator):
 
 ```go
 package main
@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/antonmedv/expr"
+	"github.com/byte-power/jsexpr"
 )
 
 func main() {
