@@ -365,6 +365,16 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			i++
 			scope[key] = i
 
+		case OpAssignment:
+			b := vm.pop()
+			op := vm.pop()
+			a := vm.pop()
+			vm.push(assign(a, op, b))
+
+		case OpAssignmentLefeValue:
+			ref := vm.constant().(IdentifierRef)
+			vm.push(ref)
+
 		case OpBegin:
 			scope := make(Scope)
 			vm.scopes = append(vm.scopes, scope)

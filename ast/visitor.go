@@ -36,6 +36,8 @@ func (w *walker) walk(node *Node) {
 		w.visitor.Exit(node)
 	case *ConstantNode:
 		w.visitor.Exit(node)
+	case *AssignmentNode:
+		w.visitor.Exit(node)
 	case *UnaryNode:
 		w.walk(&n.Node)
 		w.visitor.Exit(node)

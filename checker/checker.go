@@ -69,6 +69,8 @@ func (v *visitor) visit(node ast.Node) reflect.Type {
 		t = v.BoolNode(n)
 	case *ast.StringNode:
 		t = v.StringNode(n)
+	case *ast.AssignmentNode:
+		t = v.AssignmentNode(n)
 	case *ast.UnaryNode:
 		t = v.UnaryNode(n)
 	case *ast.BinaryNode:
@@ -261,6 +263,14 @@ func (v *visitor) BinaryNode(node *ast.BinaryNode) reflect.Type {
 	}
 
 	return v.error(node, `invalid operation: %v (mismatched types %v and %v)`, node.Operator, l, r)
+}
+
+func (v *visitor) AssignmentNode(node *ast.AssignmentNode) reflect.Type {
+	l := v.visit(node.Left)
+	if isMap(l) || isStruct(l) {
+		return v.visit(node.Right)
+	}
+	return v.error(node, `invalid operation: assignment (left types %v should be map or struct)`, l)
 }
 
 func (v *visitor) MatchesNode(node *ast.MatchesNode) reflect.Type {

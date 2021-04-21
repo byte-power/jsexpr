@@ -1153,6 +1153,25 @@ func TestIssue138(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestAssignment(t *testing.T) {
+	type StructA struct {}
+	env := map[string]interface{}{
+		"a": map[string]interface{}{
+			"b": map[string]interface{}{
+				"d": StructA{},
+				"c": 1,
+			},
+		},
+	}
+	code := `a.b.d=0`
+	// code := `a.b.fn()`
+	program, err := jsexpr.Compile(code, jsexpr.Env(env))
+	require.NoError(t, err)
+	output, err := jsexpr.Run(program, env)
+	require.NoError(t, err)
+	require.Equal(t, 0, output)
+}
+
 //
 // Mock types
 //

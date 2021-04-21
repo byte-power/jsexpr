@@ -61,6 +61,16 @@ var binaryOperators = map[string]operator{
 	"**":         {70, right},
 }
 
+const assignmentOperatorPrecedence = 750
+
+var assignmentOperators = map[string]operator{
+	"=":  {assignmentOperatorPrecedence, left},
+	"+=": {assignmentOperatorPrecedence, left},
+	"-=": {assignmentOperatorPrecedence, left},
+	"*=": {assignmentOperatorPrecedence, left},
+	"/=": {assignmentOperatorPrecedence, left},
+}
+
 var builtins = map[string]builtin{
 	"len":    {1},
 	"all":    {2},
@@ -184,6 +194,23 @@ func (p *parser) parseExpression(precedence int) Node {
 				}
 				token = p.current
 				continue
+			}
+		} else if op, ok := assignmentOperators[token.Value]; ok {
+			if op.precedence >= precedence {
+				p.next()
+
+				var nodeRight Node
+				if op.associativity == left {
+					nodeRight = p.parseExpression(op.precedence + 1)
+				} else {
+					nodeRight = p.parseExpression(op.precedence)
+				}
+				nodeLeft = &AssignmentNode{
+					Operator: token.Value,
+					Left:     nodeLeft,
+					Right:    nodeRight,
+				}
+				nodeLeft.SetLocation(token.Location)
 			}
 		}
 		break

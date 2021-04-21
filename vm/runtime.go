@@ -15,6 +15,24 @@ type Call struct {
 
 type Scope map[string]interface{}
 
+// reversed keys
+type IdentifierRef []string
+
+func assign(to, op, value interface{}) interface{} {
+	v := reflect.ValueOf(to)
+	kind := v.Kind()
+	if kind == reflect.Ptr && reflect.Indirect(v).Kind() == reflect.Struct {
+		v = reflect.Indirect(v)
+		kind = v.Kind()
+	}
+	// TODO: assign value for 
+	switch kind {
+	case reflect.Interface:
+		
+	}
+	return value
+}
+
 func fetch(from interface{}, i interface{}) interface{} {
 	v := reflect.ValueOf(from)
 	kind := v.Kind()

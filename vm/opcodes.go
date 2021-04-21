@@ -48,6 +48,8 @@ const (
 	OpStore
 	OpLoad
 	OpInc
+	OpAssignmentLefeValue
+	OpAssignment
 	OpBegin
 	OpEnd // This opcode must be at the end of this list.
 )

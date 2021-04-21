@@ -82,6 +82,13 @@ type UnaryNode struct {
 	Node     Node
 }
 
+type AssignmentNode struct {
+	base
+	Operator string
+	Left     Node
+	Right    Node
+}
+
 type BinaryNode struct {
 	base
 	Operator string

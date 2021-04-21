@@ -137,6 +137,8 @@ func (c *compiler) compile(node ast.Node) {
 		c.StringNode(n)
 	case *ast.ConstantNode:
 		c.ConstantNode(n)
+	case *ast.AssignmentNode:
+		c.AssignmentNode(n)
 	case *ast.UnaryNode:
 		c.UnaryNode(n)
 	case *ast.BinaryNode:
@@ -423,6 +425,36 @@ func (c *compiler) SliceNode(node *ast.SliceNode) {
 		c.emitPush(0)
 	}
 	c.emit(OpSlice)
+}
+
+func (c *compiler) AssignmentNode(node *ast.AssignmentNode) {
+	switch node.Operator {
+	case "=":
+		c.AssignmentLeftNode(node.Left)
+		c.emitPush(node.Operator)
+		c.compile(node.Right)
+		c.emit(OpAssignment)
+	}
+}
+
+func (c *compiler) AssignmentLeftNode(node ast.Node) {
+	n := node
+	ref := IdentifierRef{}
+loop:
+	for {
+		switch _n := n.(type) {
+		case *ast.IdentifierNode:
+			ref = append(ref, _n.Value)
+			break loop
+		case *ast.PropertyNode:
+			ref = append(ref, _n.Property)
+			n = _n.Node
+		default:
+			// TODO: emit error for other type
+			break loop
+		}
+	}
+	c.emit(OpAssignmentLefeValue, c.makeConstant(ref)...)
 }
 
 func (c *compiler) MethodNode(node *ast.MethodNode) {
