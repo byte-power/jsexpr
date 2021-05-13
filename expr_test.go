@@ -1343,3 +1343,46 @@ func (p *lengthPatcher) Exit(node *ast.Node) {
 		}
 	}
 }
+
+// custom tests for debugging
+type patcher1 struct{}
+
+func (p *patcher1) Enter(_ *ast.Node) {}
+func (p *patcher1) Exit(node *ast.Node) {
+	n, ok := (*node).(*ast.IndexNode)
+	if !ok {
+		return
+	}
+	unary, ok := n.Index.(*ast.UnaryNode)
+	if !ok {
+		return
+	}
+	if unary.Operator == "-" {
+		ast.Patch(&n.Index, &ast.BinaryNode{
+			Operator: "-",
+			Left:     &ast.BuiltinNode{Name: "len", Arguments: []ast.Node{n.Node}},
+			Right:    unary.Node,
+		})
+	}
+}
+
+func Test_patcher1Index(t *testing.T) {
+	env := map[string]interface{}{
+		"list": []string{"1", "2", "3"},
+		"a":    1,
+	}
+
+	code := `list[-a]` // will output 3
+
+	program, err := jsexpr.Compile(code, jsexpr.Env(env), jsexpr.Patch(&patcher1{}))
+	if err != nil {
+		panic(err)
+	}
+
+	output, err := jsexpr.Run(program, env)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Print(output)
+	assert.Equal(t, "3", output)
+}
