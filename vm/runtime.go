@@ -91,9 +91,6 @@ func FetchFn(from interface{}, name string) reflect.Value {
 	// Methods can be defined on any type.
 	if v.NumMethod() > 0 {
 		method := v.MethodByName(name)
-		if method.Type().NumOut() != 1 {
-			panic(fmt.Sprintf(`"%v" from %T doesn't have one and only return value`, name, from))
-		}
 		if method.IsValid() {
 			return method
 		}
@@ -114,9 +111,6 @@ func FetchFn(from interface{}, name string) reflect.Value {
 		// If struct has not method, maybe it has func field.
 		// To access this field we need dereference value.
 		value := d.FieldByName(name)
-		if value.Type().NumOut() != 1 {
-			panic(fmt.Sprintf(`"%v" from %T doesn't have one and only return value`, name, from))
-		}
 		if value.IsValid() {
 			return value
 		}

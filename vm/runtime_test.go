@@ -7,10 +7,10 @@ import (
 )
 
 func TestFetchFn(t *testing.T) {
-	// env := map[string]interface{}{
-	// 	"fn": func() (string, error) { return "hh", nil },
-	// }
-	env := envStruct{Fn: yoyo}
+	env := map[string]interface{}{
+		"Fn": func() string { return "hh" },
+	}
+	// env := envStruct{Fn: yoyo}
 	v := FetchFn(env, "Fn")
 	assert.Equal(t, "", v)
 }
