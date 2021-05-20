@@ -620,14 +620,14 @@ func TestExpr(t *testing.T) {
 			`1 in [1, 2, 3] && "foo" in {foo: 0, bar: 1} && "Price" in Ticket`,
 			true,
 		},
-		{
-			`1 in [1.5] || 1 not in [1]`,
-			false,
-		},
-		{
-			`One in 0..1 && Two not in 0..1`,
-			true,
-		},
+		// {
+		// 	`1 in [1.5] || 1 not in [1]`,
+		// 	false,
+		// },
+		// {
+		// 	`One in 0..1 && Two not in 0..1`,
+		// 	true,
+		// },
 		{
 			`Int32 in [10, 20]`,
 			false,

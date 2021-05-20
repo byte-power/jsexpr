@@ -95,22 +95,32 @@ func TestOptimize_const_range(t *testing.T) {
 }
 
 func TestOptimize_const_expr(t *testing.T) {
-	tree, err := parser.Parse(`upper("hello")`)
+	tree, err := parser.Parse(`timestamp()`)
 	require.NoError(t, err)
 
 	env := map[string]interface{}{
-		"upper": strings.ToUpper,
+		"upper":     strings.ToUpper,
+		"timestamp": Unix,
 	}
 
 	config := conf.New(env)
-	config.ConstExpr("upper")
+	config.ConstExpr("timestamp")
 
 	err = optimizer.Optimize(&tree.Node, config)
 	require.NoError(t, err)
 
+	testOne = 2
 	expected := &ast.ConstantNode{
-		Value: "HELLO",
+		Value: 2,
 	}
 
 	assert.Equal(t, ast.Dump(expected), ast.Dump(tree.Node))
 }
+
+func Unix() int {
+	return testOne
+}
+
+var (
+	testOne = 1
+)

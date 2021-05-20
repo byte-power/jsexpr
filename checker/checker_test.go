@@ -106,7 +106,7 @@ func TestCheck(t *testing.T) {
 		"2**3 + 1",
 		"[1,2,3]",
 		"Abc == Float",
-		"Abc()",
+		"Abc(1)",
 		"Any matches Any",
 		"Any.Thing.Is.Bool",
 		"ArrayOfAny['string'].next.goes['any thing']",
@@ -144,7 +144,7 @@ func TestCheck(t *testing.T) {
 		"String in Foo",
 		"String matches 'ok'",
 		"String matches Any",
-		"String not in Foo2p",
+		//"String not in Foo2p",
 		"StringPtr == nil",
 		"Sub.Method(0) + String",
 		"Sub.SubString",
@@ -168,6 +168,12 @@ func TestCheck(t *testing.T) {
 		assert.NoError(t, err, test)
 
 		_, err = checker.Check(tree, conf.New(mockEnv2{}))
+		// config := &conf.Config{
+		// 	Operators:    make(map[string][]string),
+		// 	ConstExprFns: make(map[string]reflect.Value),
+		// 	Optimize:     true,
+		// }
+		// _, err = checker.Check(tree, config)
 		assert.NoError(t, err, test)
 	}
 }

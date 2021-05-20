@@ -34,7 +34,7 @@ type lexer struct {
 	state      stateFn
 	tokens     []Token
 	start, end int           // current position in input
-	width      int           // last rune with
+	width      int           // last rune width
 	startLoc   file.Location // start location
 	prev, loc  file.Location // prev location of end location, end location
 	err        *file.Error

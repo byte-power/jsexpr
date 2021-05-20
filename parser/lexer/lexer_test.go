@@ -64,9 +64,10 @@ var lexTests = []lexTest{
 		},
 	},
 	{
-		`not in not abc not i not(false) not  in`,
+		`not in not abc not i not(false) not in`,
 		[]Token{
-			{Kind: Operator, Value: "not in"},
+			{Kind: Operator, Value: "not"},
+			{Kind: Operator, Value: "in"},
 			{Kind: Operator, Value: "not"},
 			{Kind: Identifier, Value: "abc"},
 			{Kind: Operator, Value: "not"},
@@ -95,6 +96,17 @@ var lexTests = []lexTest{
 			{Kind: Identifier, Value: "$i"},
 			{Kind: Identifier, Value: "_0"},
 			{Kind: Identifier, Value: "früh"},
+			{Kind: EOF},
+		},
+	},
+	{
+		`1
+2
+3`,
+		[]Token{
+			{Kind: Number, Value: "1"},
+			{Kind: Number, Value: "2"},
+			{Kind: Number, Value: "3"},
 			{Kind: EOF},
 		},
 	},

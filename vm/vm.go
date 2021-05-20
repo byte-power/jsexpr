@@ -269,7 +269,8 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			vm.push(fetch(a, b))
 
 		case OpCall:
-			call := vm.constant().(Call)
+			// call := vm.constant().(Call)
+			call := vm.getCall()
 			in := make([]reflect.Value, call.Size)
 			for i := call.Size - 1; i >= 0; i-- {
 				param := vm.pop()
@@ -285,7 +286,8 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			vm.push(out[0].Interface())
 
 		case OpCallFast:
-			call := vm.constant().(Call)
+			// call := vm.constant().(Call)
+			call := vm.getCall()
 			in := make([]interface{}, call.Size)
 			for i := call.Size - 1; i >= 0; i-- {
 				in[i] = vm.pop()
@@ -294,7 +296,8 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			vm.push(fn.(func(...interface{}) interface{})(in...))
 
 		case OpMethod:
-			call := vm.constants[vm.arg()].(Call)
+			// call := vm.constants[vm.arg()].(Call)
+			call := vm.getCall()
 			in := make([]reflect.Value, call.Size)
 			for i := call.Size - 1; i >= 0; i-- {
 				param := vm.pop()
@@ -394,6 +397,10 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 }
 
 func (vm *VM) push(value interface{}) {
+	if provider, ok := value.(ValueProvider); ok {
+		vm.stack = append(vm.stack, provider.GetValue())
+		return
+	}
 	vm.stack = append(vm.stack, value)
 }
 
@@ -436,4 +443,48 @@ func (vm *VM) Step() {
 
 func (vm *VM) Position() chan int {
 	return vm.curr
+}
+
+func (vm *VM) getCall() Call {
+	c := vm.constants[vm.arg()]
+	switch call := c.(type) {
+	case Call:
+		return call
+	case map[string]interface{}:
+		return Call{
+			Name: call["name"].(string),
+			Size: AnyToInt(call["size"]),
+		}
+	default:
+		panic(fmt.Sprintf("no call"))
+	}
+}
+
+func AnyToInt(value interface{}) int {
+	if value == nil {
+		return 0
+	}
+	switch val := value.(type) {
+	case int:
+		return val
+	case int8:
+		return int(val)
+	case int16:
+		return int(val)
+	case int32:
+		return int(val)
+	case int64:
+		return int(val)
+	case uint:
+		return int(val)
+	case uint8:
+		return int(val)
+	case uint16:
+		return int(val)
+	case uint32:
+		return int(val)
+	case uint64:
+		return int(val)
+	}
+	return 0
 }
