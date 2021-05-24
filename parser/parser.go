@@ -72,6 +72,10 @@ var builtins = map[string]builtin{
 	"count":  {2},
 }
 
+var jsBuiltins = map[string]struct{}{
+	"parseInt": struct{}{},
+}
+
 type parser struct {
 	tokens  []Token
 	current Token
@@ -338,8 +342,14 @@ func (p *parser) parseIdentifierExpression(token Token) Node {
 	var node Node
 	if p.current.Is(Bracket, "(") {
 		var arguments []Node
-
-		if b, ok := builtins[token.Value]; ok {
+		if _, ok := jsBuiltins[token.Value]; ok {
+			arguments = p.parseArguments()
+			node = &BuiltinNode{
+				Name:      token.Value,
+				Arguments: arguments,
+			}
+			node.SetLocation(token.Location)
+		} else if b, ok := builtins[token.Value]; ok {
 			p.expect(Bracket, "(")
 			// TODO: Add builtins signatures.
 			if b.arity == 1 {
