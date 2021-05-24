@@ -113,26 +113,26 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			vm.push(nil)
 
 		case OpNegate:
-			v := negate(vm.pop())
+			v := negate(vm.popThroughValueFetcher())
 			vm.push(v)
 
 		case OpNot:
-			v := vm.pop().(bool)
+			v := vm.popThroughValueFetcher().(bool)
 			vm.push(!v)
 
 		case OpEqual:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(equal(a, b))
 
 		case OpEqualInt:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(a.(int) == b.(int))
 
 		case OpEqualString:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(a.(string) == b.(string))
 
 		case OpJump:
@@ -156,63 +156,63 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			vm.ip -= int(offset)
 
 		case OpIn:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(in(a, b))
 
 		case OpLess:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(less(a, b))
 
 		case OpMore:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(more(a, b))
 
 		case OpLessOrEqual:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(lessOrEqual(a, b))
 
 		case OpMoreOrEqual:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(moreOrEqual(a, b))
 
 		case OpAdd:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(add(a, b))
 
 		case OpSubtract:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(subtract(a, b))
 
 		case OpMultiply:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(multiply(a, b))
 
 		case OpDivide:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(divide(a, b))
 
 		case OpModulo:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(modulo(a, b))
 
 		case OpExponent:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(exponent(a, b))
 
 		case OpRange:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			min := toInt(a)
 			max := toInt(b)
 			size := max - min + 1
@@ -223,8 +223,8 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			vm.memory += size
 
 		case OpMatches:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			match, err := regexp.MatchString(b.(string), a.(string))
 			if err != nil {
 				panic(err)
@@ -233,34 +233,34 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			vm.push(match)
 
 		case OpMatchesConst:
-			a := vm.pop()
+			a := vm.popThroughValueFetcher()
 			r := vm.constant().(*regexp.Regexp)
 			vm.push(r.MatchString(a.(string)))
 
 		case OpContains:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(strings.Contains(a.(string), b.(string)))
 
 		case OpStartsWith:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(strings.HasPrefix(a.(string), b.(string)))
 
 		case OpEndsWith:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(strings.HasSuffix(a.(string), b.(string)))
 
 		case OpIndex:
-			b := vm.pop()
-			a := vm.pop()
+			b := vm.popThroughValueFetcher()
+			a := vm.popThroughValueFetcher()
 			vm.push(fetch(a, b))
 
 		case OpSlice:
-			from := vm.pop()
-			to := vm.pop()
-			node := vm.pop()
+			from := vm.popThroughValueFetcher()
+			to := vm.popThroughValueFetcher()
+			node := vm.popThroughValueFetcher()
 			vm.push(slice(node, from, to))
 
 		case OpProperty:
@@ -273,7 +273,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			call := vm.getCall()
 			in := make([]reflect.Value, call.Size)
 			for i := call.Size - 1; i >= 0; i-- {
-				param := vm.pop()
+				param := vm.popThroughValueFetcher()
 				if param == nil && reflect.TypeOf(param) == nil {
 					// In case of nil value and nil type use this hack,
 					// otherwise reflect.Call will panic on zero value.
@@ -290,7 +290,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			call := vm.getCall()
 			in := make([]interface{}, call.Size)
 			for i := call.Size - 1; i >= 0; i-- {
-				in[i] = vm.pop()
+				in[i] = vm.popThroughValueFetcher()
 			}
 			fn := FetchFn(env, call.Name).Interface()
 			vm.push(fn.(func(...interface{}) interface{})(in...))
@@ -300,7 +300,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			call := vm.getCall()
 			in := make([]reflect.Value, call.Size)
 			for i := call.Size - 1; i >= 0; i-- {
-				param := vm.pop()
+				param := vm.popThroughValueFetcher()
 				if param == nil && reflect.TypeOf(param) == nil {
 					// In case of nil value and nil type use this hack,
 					// otherwise reflect.Call will panic on zero value.
@@ -316,7 +316,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			size := vm.pop().(int)
 			array := make([]interface{}, size)
 			for i := size - 1; i >= 0; i-- {
-				array[i] = vm.pop()
+				array[i] = vm.popThroughValueFetcher()
 			}
 			vm.push(array)
 			vm.memory += size
@@ -328,8 +328,8 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			size := vm.pop().(int)
 			m := make(map[string]interface{})
 			for i := size - 1; i >= 0; i-- {
-				value := vm.pop()
-				key := vm.pop()
+				value := vm.popThroughValueFetcher()
+				key := vm.popThroughValueFetcher()
 				m[key.(string)] = value
 			}
 			vm.push(m)
@@ -345,15 +345,15 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			t := vm.arg()
 			switch t {
 			case 0:
-				vm.push(toInt64(vm.pop()))
+				vm.push(toInt64(vm.popThroughValueFetcher()))
 			case 1:
-				vm.push(toFloat64(vm.pop()))
+				vm.push(toFloat64(vm.popThroughValueFetcher()))
 			}
 
 		case OpStore:
 			scope := vm.Scope()
 			key := vm.constant().(string)
-			value := vm.pop()
+			value := vm.popThroughValueFetcher()
 			scope[key] = value
 
 		case OpLoad:
@@ -397,10 +397,6 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 }
 
 func (vm *VM) push(value interface{}) {
-	if provider, ok := value.(ValueProvider); ok {
-		vm.stack = append(vm.stack, provider.GetValue())
-		return
-	}
 	vm.stack = append(vm.stack, value)
 }
 
@@ -412,6 +408,14 @@ func (vm *VM) pop() interface{} {
 	value := vm.stack[len(vm.stack)-1]
 	vm.stack = vm.stack[:len(vm.stack)-1]
 	return value
+}
+
+func (vm *VM) popThroughValueFetcher() interface{} {
+	v := vm.pop()
+	if provider, ok := v.(ValueProvider); ok {
+		return provider.GetValue()
+	}
+	return v
 }
 
 func (vm *VM) arg() uint16 {
