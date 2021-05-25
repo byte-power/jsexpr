@@ -1400,6 +1400,11 @@ func TestBytepowerExpr(t *testing.T) {
 
 	tests := []test{
 		{
+			`parseInt("10", 16)`,
+			16,
+			nil,
+		},
+		{
 			`pigat_get("player.level") + .5 < 555`,
 			true,
 			map[string]interface{}{

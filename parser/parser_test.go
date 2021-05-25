@@ -323,3 +323,26 @@ func TestParse_error(t *testing.T) {
 		assert.Equal(t, input[1], err.Error(), input[0])
 	}
 }
+
+func TestParseJSBuiltinFuncs(t *testing.T) {
+	type test struct {
+		input string
+	}
+	tests := []test{
+		{
+			`parseInt("1",10)`,
+		},
+		{
+			`parseInt("1","2",10)`,
+		},
+		{
+			`parseInt(some_string,10)`,
+		},
+	}
+
+	for _, test := range tests {
+		tree, err := parser.Parse(test.input)
+		fmt.Println(tree) // for debug
+		assert.Nil(t, err)
+	}
+}
