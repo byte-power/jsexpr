@@ -111,9 +111,9 @@ loop:
 		default:
 			l.backup()
 			switch l.word() {
-			case "not":
-				return not
-			case "in", "or", "and", "matches", "contains", "startsWith", "endsWith":
+			// case "not":
+			// 	return not
+			case "in", "or", "not", "and", "matches", "contains", "startsWith", "endsWith":
 				l.emit(Operator)
 			default:
 				l.emit(Identifier)
@@ -124,11 +124,11 @@ loop:
 	return root
 }
 
-func not(l *lexer) stateFn {
-	if l.acceptWord(" in") {
-		l.emit(Operator)
-	} else {
-		l.emit(Operator)
-	}
-	return root
-}
+// func not(l *lexer) stateFn {
+// 	if l.acceptWord(" in") {
+// 		l.emit(Operator)
+// 	} else {
+// 		l.emit(Operator)
+// 	}
+// 	return root
+// }

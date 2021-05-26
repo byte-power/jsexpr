@@ -2,6 +2,7 @@ package jsexpr_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/byte-power/jsexpr"
 	"github.com/byte-power/jsexpr/vm"
@@ -437,4 +438,45 @@ func Benchmark_realWorldInsane(b *testing.B) {
 	if !out.(bool) {
 		b.Fail()
 	}
+}
+
+type Env struct {
+	Tweets []Tweet
+}
+
+type Tweet struct {
+	Text string
+	Date time.Time
+}
+
+func (Env) Format(t time.Time) string { return t.Format(time.RFC822) }
+
+func BenchmarkCompileWithoutEnv(b *testing.B) {
+	code := `map(filter(Tweets, {len(.Text) > 0}), {.Text + Format(.Date)})`
+	env := Env{
+		Tweets: []Tweet{{"Oh My God!", time.Now()}, {"How you doin?", time.Now()}, {"Could I be wearing any more clothes?", time.Now()}},
+	}
+
+	program, _ := jsexpr.Compile(code)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = jsexpr.Run(program, env)
+	}
+	b.StopTimer()
+}
+
+func BenchmarkCompileWithEnv(b *testing.B) {
+	code := `map(filter(Tweets, {len(.Text) > 0}), {.Text + Format(.Date)})`
+	env := Env{
+		Tweets: []Tweet{{"Oh My God!", time.Now()}, {"How you doin?", time.Now()}, {"Could I be wearing any more clothes?", time.Now()}},
+	}
+
+	program, _ := jsexpr.Compile(code, jsexpr.Env(Env{}))
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = jsexpr.Run(program, env)
+	}
+	b.StopTimer()
 }

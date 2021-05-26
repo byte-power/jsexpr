@@ -9,9 +9,17 @@ import (
 )
 
 type Call struct {
-	Name string
-	Size int
+	Name string `msgpack:"name"`
+	Size int    `msgpack:"size"`
 }
+
+// func (c Call) MarshalMsgpack() ([]byte, error) {
+// 	return msgpack.Marshal(&c)
+// }
+
+// func (c Call) UnmarshalMsgpack(bytes []byte) error {
+// 	return msgpack.Unmarshal(bytes, &c)
+// }
 
 type Scope map[string]interface{}
 
@@ -46,6 +54,9 @@ func fetch(from interface{}, i interface{}) interface{} {
 		}
 
 	case reflect.Struct:
+		if provider, ok := from.(PropertyProvider); ok {
+			return provider.FetchProperty(reflect.ValueOf(i).String())
+		}
 		value := v.FieldByName(reflect.ValueOf(i).String())
 		if value.IsValid() && value.CanInterface() {
 			return value.Interface()

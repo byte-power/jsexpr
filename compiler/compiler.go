@@ -446,6 +446,10 @@ func (c *compiler) FunctionNode(node *ast.FunctionNode) {
 
 func (c *compiler) BuiltinNode(node *ast.BuiltinNode) {
 	switch node.Name {
+	case "parseInt":
+		//TODO: add parseInt opcodes
+		c.compile(node.Arguments[0])
+
 	case "len":
 		c.compile(node.Arguments[0])
 		c.emit(OpLen)

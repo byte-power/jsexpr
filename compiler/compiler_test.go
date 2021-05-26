@@ -30,6 +30,24 @@ func TestCompile(t *testing.T) {
 	}
 	var tests = []test{
 		{
+			`pigat_get("player.level") + 1 < 10`,
+			vm.Program{},
+		},
+		{
+			`true && true || true`,
+			vm.Program{
+				Bytecode: []byte{
+					vm.OpTrue,
+					vm.OpJumpIfFalse, 2, 0,
+					vm.OpPop,
+					vm.OpTrue,
+					vm.OpJumpIfTrue, 2, 0,
+					vm.OpPop,
+					vm.OpTrue,
+				},
+			},
+		},
+		{
 			`65535`,
 			vm.Program{
 				Constants: []interface{}{
@@ -114,20 +132,6 @@ func TestCompile(t *testing.T) {
 				Bytecode: []byte{
 					vm.OpPush, 0, 0,
 					vm.OpNegate,
-				},
-			},
-		},
-		{
-			`true && true || true`,
-			vm.Program{
-				Bytecode: []byte{
-					vm.OpTrue,
-					vm.OpJumpIfFalse, 2, 0,
-					vm.OpPop,
-					vm.OpTrue,
-					vm.OpJumpIfTrue, 2, 0,
-					vm.OpPop,
-					vm.OpTrue,
 				},
 			},
 		},

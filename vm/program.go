@@ -9,10 +9,10 @@ import (
 )
 
 type Program struct {
-	Source    *file.Source
-	Locations map[int]file.Location
-	Constants []interface{}
-	Bytecode  []byte
+	Source    *file.Source          `msgpack:"source"`
+	Locations map[int]file.Location `msgpack:"locations"`
+	Constants []interface{}         `msgpack:"constants"`
+	Bytecode  []byte                `msgpack:"bytecode"`
 }
 
 func (program *Program) Disassemble() string {
