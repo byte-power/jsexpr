@@ -7,7 +7,8 @@ import (
 )
 
 var funcs = map[string]JSFunc{
-	"parseInt": jsParseInt,
+	"parseInt":   jsParseInt,
+	"parseFloat": jsParseFloat,
 }
 
 func Funcs() map[string]JSFunc {
@@ -32,4 +33,11 @@ func parseInt(number, radix int) int {
 		panic(err)
 	}
 	return int(out)
+}
+
+func jsParseFloat(inputs ...interface{}) interface{} {
+	if len(inputs) == 0 {
+		return nil
+	}
+	return utility.FloatOutofAny(inputs[0])
 }

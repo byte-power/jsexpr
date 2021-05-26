@@ -1405,6 +1405,36 @@ func TestBytepowerExpr(t *testing.T) {
 			nil,
 		},
 		{
+			`parseInt("10")`,
+			10,
+			nil,
+		},
+		{
+			`parseInt("10",16,1,1,1,1,"2","3")`,
+			16,
+			nil,
+		},
+		{
+			`parseInt("10") < 10`,
+			false,
+			nil,
+		},
+		{
+			`parseFloat(".5") < 1`,
+			true,
+			nil,
+		},
+		{
+			`parseFloat(" 12.12.12 hey", 1, 3, 5)`,
+			12.12,
+			nil,
+		},
+		{
+			`parseFloat(12.1, "ignored")`,
+			12.1,
+			nil,
+		},
+		{
 			`pigat_get("player.level") + .5 < 555`,
 			true,
 			map[string]interface{}{
