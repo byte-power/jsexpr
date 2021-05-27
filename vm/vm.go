@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/byte-power/jsexpr/builtin"
 	"github.com/byte-power/jsexpr/file"
 )
 
@@ -23,17 +24,18 @@ func Run(program *Program, env interface{}) (interface{}, error) {
 }
 
 type VM struct {
-	stack     []interface{}
-	constants []interface{}
-	bytecode  []byte
-	ip        int
-	pp        int
-	scopes    []Scope
-	debug     bool
-	step      chan struct{}
-	curr      chan int
-	memory    int
-	limit     int
+	stack        []interface{}
+	constants    []interface{}
+	bytecode     []byte
+	ip           int
+	pp           int
+	scopes       []Scope
+	debug        bool
+	step         chan struct{}
+	curr         chan int
+	memory       int
+	limit        int
+	builtinFuncs map[string]builtin.JSFunc
 }
 
 func Debug() *VM {
@@ -45,17 +47,7 @@ func Debug() *VM {
 	return vm
 }
 
-func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			f := &file.Error{
-				Location: program.Locations[vm.pp],
-				Message:  fmt.Sprintf("%v", r),
-			}
-			err = f.Bind(program.Source)
-		}
-	}()
-
+func (vm *VM) init(program *Program) {
 	vm.limit = MemoryBudget
 	vm.ip = 0
 	vm.pp = 0
@@ -72,6 +64,64 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 
 	vm.bytecode = program.Bytecode
 	vm.constants = program.Constants
+
+	vm.builtinFuncs = builtin.Funcs()
+}
+
+func (vm *VM) fetchFn(from interface{}, name string) reflect.Value {
+	if from != nil {
+		v := reflect.ValueOf(from)
+
+		if v.NumMethod() > 0 {
+			method := v.MethodByName(name)
+			if method.IsValid() {
+				return method
+			}
+		}
+
+		d := v
+		if v.Kind() == reflect.Ptr {
+			d = v.Elem()
+		}
+
+		switch d.Kind() {
+		case reflect.Map:
+			value := d.MapIndex(reflect.ValueOf(name))
+			if value.IsValid() && value.CanInterface() {
+				return value.Elem()
+			}
+		case reflect.Struct:
+			value := d.FieldByName(name)
+			if value.IsValid() {
+				return value
+			}
+		}
+	}
+
+	// no luck from passed-in env, so fetch from vm's env
+
+	vmFuncs := reflect.ValueOf(vm.builtinFuncs)
+	value := vmFuncs.MapIndex(reflect.ValueOf(name))
+	if value.IsValid() && value.CanInterface() {
+		return value
+	}
+
+	// also not in vm env, so panic
+	panic(fmt.Sprintf(`cannot get "%v" from %T, also not found in vm's environment`, name, from))
+}
+
+func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			f := &file.Error{
+				Location: program.Locations[vm.pp],
+				Message:  fmt.Sprintf("%v", r),
+			}
+			err = f.Bind(program.Source)
+		}
+	}()
+
+	vm.init(program)
 
 	for vm.ip < len(vm.bytecode) {
 
@@ -282,7 +332,8 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 					in[i] = reflect.ValueOf(param)
 				}
 			}
-			out := FetchFn(env, call.Name).Call(in)
+			//out := FetchFn(env, call.Name).Call(in)
+			out := vm.fetchFn(env, call.Name).Call(in)
 			vm.push(out[0].Interface())
 
 		case OpCallFast:
