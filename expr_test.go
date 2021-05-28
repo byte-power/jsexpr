@@ -1397,8 +1397,83 @@ func TestBytepowerExpr(t *testing.T) {
 		expected interface{}
 		env      interface{}
 	}
+	testPanda := &panda{
+		Age: 10,
+	}
+
+	testKoala := &koala{
+		Origin: "earth",
+	}
 
 	tests := []test{
+		{
+			`koala.origin == "earth"`,
+			true,
+			bpMockEnv{
+				Koala: *testKoala,
+			},
+		},
+		{
+			`koala.HOWL()`,
+			"fuck australia!",
+			bpMockEnv{
+				Koala: koala{
+					Howl: func() string {
+						return "fuck australia!"
+					},
+				},
+			},
+		},
+		{
+			`koala.Age < 10`,
+			true,
+			&bpMockEnv{
+				Koala: koala{
+					Age: 9,
+				},
+			},
+		},
+		{
+			`panda.howl()`,
+			"i'm from China",
+			bpMockEnv{
+				Panda: *testPanda,
+			},
+		},
+		{
+			`panda.age > 10`,
+			false,
+			&bpMockEnv{
+				Panda: *testPanda,
+			},
+		},
+		{
+			`panda.age > 10`,
+			false,
+			&bpMockEnv{
+				Panda: panda{
+					Age: 8,
+				},
+			},
+		},
+		{
+			`panda.age > 10`,
+			true,
+			bpMockEnv{
+				Panda: panda{
+					Age: 11,
+				},
+			},
+		},
+		{
+			`panda.age`,
+			10,
+			bpMockEnv{
+				Panda: panda{
+					Age: 10,
+				},
+			},
+		},
 		{
 			`parseInt("10", 16)`,
 			16,
@@ -1468,6 +1543,8 @@ func TestBytepowerExpr(t *testing.T) {
 				player{
 					Level: 1,
 				},
+				panda{},
+				koala{},
 			},
 		},
 		{ // this is BP implemented PropertyProvider and ValueProvider, as player's object -- `mockPlayer` matched PropertyProvider
@@ -1619,4 +1696,20 @@ type player struct {
 
 type bpMockEnv struct {
 	Player player
+	Panda  panda
+	Koala  koala
+}
+
+type panda struct {
+	Age int
+}
+
+func (this panda) Howl() string {
+	return "i'm from China"
+}
+
+type koala struct {
+	Age    int           `jsexpr:"Age"`
+	Howl   func() string `jsexpr:"HOWL"`
+	Origin string
 }
