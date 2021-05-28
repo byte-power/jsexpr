@@ -37,6 +37,7 @@ type VM struct {
 	memory       int
 	limit        int
 	builtinFuncs map[string]builtin.JSFunc
+	builtinObjs  map[string]interface{}
 }
 
 func Debug() *VM {
@@ -67,19 +68,67 @@ func (vm *VM) init(program *Program) {
 	vm.constants = program.Constants
 
 	vm.builtinFuncs = builtin.Funcs()
+	vm.builtinObjs = builtin.Objs()
+}
+
+func (vm *VM) fetch(from interface{}, i interface{}) interface{} {
+	v := reflect.ValueOf(from)
+	kind := v.Kind()
+
+	// Structures can be access through a pointer or through a value, when they
+	// are accessed through a pointer we don't want to copy them to a value.
+	if kind == reflect.Ptr && reflect.Indirect(v).Kind() == reflect.Struct {
+		v = reflect.Indirect(v)
+		kind = v.Kind()
+	}
+
+	switch kind {
+
+	case reflect.Array, reflect.Slice, reflect.String:
+		value := v.Index(toInt(i))
+		if value.IsValid() && value.CanInterface() {
+			return value.Interface()
+		}
+
+	case reflect.Map:
+		value := v.MapIndex(reflect.ValueOf(i))
+		if value.IsValid() {
+			if value.CanInterface() {
+				return value.Interface()
+			}
+		} else {
+			elem := reflect.TypeOf(from).Elem()
+			return reflect.Zero(elem).Interface()
+		}
+
+	case reflect.Struct:
+		if provider, ok := from.(PropertyProvider); ok {
+			return provider.FetchProperty(reflect.ValueOf(i).String())
+		}
+		// value := v.FieldByName(reflect.ValueOf(i).String())
+		// if value.IsValid() && value.CanInterface() {
+		// 	return value.Interface()
+		// }
+
+		structReflection := structReflectionFromTags(v)
+		if value, ok := structReflection[i.(string)]; ok && value.IsValid() && value.CanInterface() {
+			return value.Interface()
+
+		}
+	}
+
+	// not found in passed-in env, so fetch from vm's env
+	if value, ok := vm.builtinObjs[i.(string)]; ok {
+		return value
+	}
+
+	// still not found
+	panic(fmt.Sprintf("cannot fetch %v from %T", i, from))
 }
 
 func (vm *VM) fetchFn(from interface{}, name string) reflect.Value {
 	if from != nil {
 		v := reflect.ValueOf(from)
-
-		// if v.NumMethod() > 0 {
-
-		// 	method := v.MethodByName(name)
-		// 	if method.IsValid() {
-		// 		return method
-		// 	}
-		// }
 		t := reflect.TypeOf(from)
 		for i := 0; i < v.NumMethod(); i++ {
 			methodSig := t.Method(i)
@@ -100,10 +149,6 @@ func (vm *VM) fetchFn(from interface{}, name string) reflect.Value {
 				return value.Elem()
 			}
 		case reflect.Struct:
-			// value := d.FieldByName(name)
-			// if value.IsValid() {
-			// 	return value
-			// }
 			structReflection := structReflectionFromTags(d)
 			if value, ok := structReflection[name]; ok {
 				return value
@@ -112,7 +157,6 @@ func (vm *VM) fetchFn(from interface{}, name string) reflect.Value {
 	}
 
 	// no luck from passed-in env, so fetch from vm's env
-
 	vmFuncs := reflect.ValueOf(vm.builtinFuncs)
 	value := vmFuncs.MapIndex(reflect.ValueOf(name))
 	if value.IsValid() && value.CanInterface() {
@@ -161,7 +205,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			vm.push(a)
 
 		case OpFetch:
-			vm.push(fetch(env, vm.constant()))
+			vm.push(vm.fetch(env, vm.constant()))
 
 		case OpFetchMap:
 			vm.push(env.(map[string]interface{})[vm.constant().(string)])
@@ -318,7 +362,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 		case OpIndex:
 			b := vm.popThroughValueFetcher()
 			a := vm.popThroughValueFetcher()
-			vm.push(fetch(a, b))
+			vm.push(vm.fetch(a, b))
 
 		case OpSlice:
 			from := vm.popThroughValueFetcher()
@@ -329,7 +373,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 		case OpProperty:
 			a := vm.pop()
 			b := vm.constant()
-			vm.push(fetch(a, b))
+			vm.push(vm.fetch(a, b))
 
 		case OpCall:
 			// call := vm.constant().(Call)

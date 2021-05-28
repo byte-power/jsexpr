@@ -1407,6 +1407,29 @@ func TestBytepowerExpr(t *testing.T) {
 
 	tests := []test{
 		{
+			`Date.now() == "test"`,
+			true,
+			bpMockEnv2{
+				Date: dummy3{
+					Now: func() string { return "test" },
+				},
+			},
+		},
+		{
+			`Date.now() > 0`,
+			true,
+			nil,
+		},
+		{
+			`Panda.age < 10`,
+			true,
+			bpMockEnv2{
+				Panda: panda{
+					Age: 8,
+				},
+			},
+		},
+		{
 			`koala.origin == "earth"`,
 			true,
 			bpMockEnv{
@@ -1712,4 +1735,13 @@ type koala struct {
 	Age    int           `jsexpr:"Age"`
 	Howl   func() string `jsexpr:"HOWL"`
 	Origin string
+}
+
+type bpMockEnv2 struct {
+	Panda panda  `jsexpr:"Panda"`
+	Date  dummy3 `jsexpr:"Date"`
+}
+
+type dummy3 struct {
+	Now func() string
 }
