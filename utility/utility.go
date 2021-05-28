@@ -2,8 +2,11 @@ package utility
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"unicode"
+
+	"github.com/iancoleman/strcase"
 )
 
 func IntOutofAny(in interface{}) int {
@@ -148,4 +151,21 @@ func FloatOutofAny(in interface{}) float64 {
 	default:
 		panic(fmt.Sprintf("doesn't know how to convert %s of type %T to number", v, v))
 	}
+}
+
+func StrToLowerCamel(str string) string {
+	return strcase.ToLowerCamel(str)
+}
+
+func GetFieldTagName(field reflect.StructField) string {
+	tag := field.Tag.Get(StructTagKey)
+
+	if tag == "-" {
+		return ""
+	}
+
+	if tag == "" {
+		tag = StrToLowerCamel(field.Name)
+	}
+	return tag
 }

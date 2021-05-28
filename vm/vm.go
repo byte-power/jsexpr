@@ -8,6 +8,7 @@ import (
 
 	"github.com/byte-power/jsexpr/builtin"
 	"github.com/byte-power/jsexpr/file"
+	"github.com/byte-power/jsexpr/utility"
 )
 
 var (
@@ -72,10 +73,18 @@ func (vm *VM) fetchFn(from interface{}, name string) reflect.Value {
 	if from != nil {
 		v := reflect.ValueOf(from)
 
-		if v.NumMethod() > 0 {
-			method := v.MethodByName(name)
-			if method.IsValid() {
-				return method
+		// if v.NumMethod() > 0 {
+
+		// 	method := v.MethodByName(name)
+		// 	if method.IsValid() {
+		// 		return method
+		// 	}
+		// }
+		t := reflect.TypeOf(from)
+		for i := 0; i < v.NumMethod(); i++ {
+			methodSig := t.Method(i)
+			if utility.StrToLowerCamel(methodSig.Name) == name {
+				return v.Method(i)
 			}
 		}
 
@@ -91,8 +100,12 @@ func (vm *VM) fetchFn(from interface{}, name string) reflect.Value {
 				return value.Elem()
 			}
 		case reflect.Struct:
-			value := d.FieldByName(name)
-			if value.IsValid() {
+			// value := d.FieldByName(name)
+			// if value.IsValid() {
+			// 	return value
+			// }
+			structReflection := structReflectionFromTags(d)
+			if value, ok := structReflection[name]; ok {
 				return value
 			}
 		}
@@ -343,7 +356,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			for i := call.Size - 1; i >= 0; i-- {
 				in[i] = vm.popThroughValueFetcher()
 			}
-			fn := FetchFn(env, call.Name).Interface()
+			fn := vm.fetchFn(env, call.Name).Interface()
 			vm.push(fn.(func(...interface{}) interface{})(in...))
 
 		case OpMethod:
@@ -360,7 +373,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 					in[i] = reflect.ValueOf(param)
 				}
 			}
-			out := FetchFn(vm.pop(), call.Name).Call(in)
+			out := vm.fetchFn(vm.pop(), call.Name).Call(in)
 			vm.push(out[0].Interface())
 
 		case OpArray:

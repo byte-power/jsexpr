@@ -1,6 +1,10 @@
 package conf
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/byte-power/jsexpr/utility"
+)
 
 type Tag struct {
 	Type      reflect.Type
@@ -39,7 +43,8 @@ func CreateTypesTable(i interface{}) TypesTable {
 		// all embedded structs methods as well, no need to recursion.
 		for i := 0; i < t.NumMethod(); i++ {
 			m := t.Method(i)
-			types[m.Name] = Tag{Type: m.Type, Method: true}
+			name := utility.StrToLowerCamel(m.Name)
+			types[name] = Tag{Type: m.Type, Method: true}
 		}
 
 	case reflect.Map:
@@ -81,8 +86,8 @@ func FieldsFromStruct(t reflect.Type) TypesTable {
 					}
 				}
 			}
-
-			types[f.Name] = Tag{Type: f.Type}
+			tag := utility.GetFieldTagName(f)
+			types[tag] = Tag{Type: f.Type}
 		}
 	}
 

@@ -82,7 +82,7 @@ func ExampleEnv() {
 		Marker     string
 	}
 
-	code := `all(Segments, {.Origin == "MOW"}) && Passengers.Adults > 0 && Tags["foo"] startsWith "bar"`
+	code := `all(segments, {.origin == "MOW"}) && passengers.adults > 0 && tags["foo"] startsWith "bar"`
 
 	program, err := jsexpr.Compile(code, jsexpr.Env(Env{}))
 	if err != nil {
@@ -200,8 +200,8 @@ func ExampleAsInt64() {
 
 func ExampleOperator() {
 	code := `
-		Now() > CreatedAt &&
-		(Now() - CreatedAt).Hours() > 24
+		now() > createdAt &&
+		(now() - createdAt).hours() > 24
 	`
 
 	type Env struct {
@@ -213,8 +213,8 @@ func ExampleOperator() {
 
 	options := []jsexpr.Option{
 		jsexpr.Env(Env{}),
-		jsexpr.Operator(">", "After"),
-		jsexpr.Operator("-", "Sub"),
+		jsexpr.Operator(">", "after"),
+		jsexpr.Operator("-", "sub"),
 	}
 
 	program, err := jsexpr.Compile(code, options...)
@@ -353,7 +353,7 @@ func ExampleAllowUndefinedVariables_zero_value() {
 }
 
 func ExampleAllowUndefinedVariables_zero_value_functions() {
-	code := `words == "" ? Split("foo,bar", ",") : Split(words, ",")`
+	code := `words == "" ? split("foo,bar", ",") : split(words, ",")`
 
 	// Env is map[string]string type on which methods are defined.
 	env := mockMapStringStringEnv{}
@@ -426,9 +426,9 @@ func TestOperator_struct(t *testing.T) {
 		BirthDay: time.Date(2017, time.October, 23, 18, 30, 0, 0, time.UTC),
 	}
 
-	code := `BirthDay == "2017-10-23"`
+	code := `birthDay == "2017-10-23"`
 
-	program, err := jsexpr.Compile(code, jsexpr.Env(&mockEnv{}), jsexpr.Operator("==", "DateEqual"))
+	program, err := jsexpr.Compile(code, jsexpr.Env(&mockEnv{}), jsexpr.Operator("==", "dateEqual"))
 	require.NoError(t, err)
 
 	output, err := jsexpr.Run(program, env)
@@ -441,13 +441,13 @@ func TestOperator_interface(t *testing.T) {
 		Ticket: &ticket{Price: 100},
 	}
 
-	code := `Ticket == "$100" && "$100" == Ticket && Now != Ticket && Now == Now`
+	code := `ticket == "$100" && "$100" == ticket && now != ticket && now == now`
 
 	program, err := jsexpr.Compile(
 		code,
 		jsexpr.Env(&mockEnv{}),
-		jsexpr.Operator("==", "StringerStringEqual", "StringStringerEqual", "StringerStringerEqual"),
-		jsexpr.Operator("!=", "NotStringerStringEqual", "NotStringStringerEqual", "NotStringerStringerEqual"),
+		jsexpr.Operator("==", "stringerStringEqual", "stringStringerEqual", "stringerStringerEqual"),
+		jsexpr.Operator("!=", "notStringerStringEqual", "notStringStringerEqual", "notStringerStringerEqual"),
 	)
 	require.NoError(t, err)
 
@@ -519,6 +519,18 @@ func TestExpr(t *testing.T) {
 		want interface{}
 	}{
 		{
+			`ticket.string()`,
+			`$100`,
+		},
+		{
+			`ticket.priceDiv(25)`,
+			4,
+		},
+		{
+			`ticket.price`,
+			100,
+		},
+		{
 			`1`,
 			int(1),
 		},
@@ -531,11 +543,11 @@ func TestExpr(t *testing.T) {
 			false,
 		},
 		{
-			`Int == 0 && Int32 == 0 && Int64 == 0 && Float64 == 0 && Bool && String == "string"`,
+			`int == 0 && int32 == 0 && int64 == 0 && float64 == 0 && bool && string == "string"`,
 			true,
 		},
 		{
-			`-Int64 == 0`,
+			`-int64 == 0`,
 			true,
 		},
 		{
@@ -547,39 +559,39 @@ func TestExpr(t *testing.T) {
 			true,
 		},
 		{
-			`Int + 0`,
+			`int + 0`,
 			0,
 		},
 		{
-			`Uint64 + 0`,
+			`uint64 + 0`,
 			int(0),
 		},
 		{
-			`Uint64 + Int64`,
+			`uint64 + int64`,
 			int64(0),
 		},
 		{
-			`Int32 + Int64`,
+			`int32 + int64`,
 			int64(0),
 		},
 		{
-			`Float64 + 0`,
+			`float64 + 0`,
 			float64(0),
 		},
 		{
-			`0 + Float64`,
+			`0 + float64`,
 			float64(0),
 		},
 		{
-			`0 <= Float64`,
+			`0 <= float64`,
 			true,
 		},
 		{
-			`Float64 < 1`,
+			`float64 < 1`,
 			true,
 		},
 		{
-			`Int < 1`,
+			`int < 1`,
 			true,
 		},
 		{
@@ -607,19 +619,19 @@ func TestExpr(t *testing.T) {
 			true,
 		},
 		{
-			`Int in 0..1`,
+			`int in 0..1`,
 			true,
 		},
 		{
-			`Int32 in 0..1`,
+			`int32 in 0..1`,
 			true,
 		},
 		{
-			`Int64 in 0..1`,
+			`int64 in 0..1`,
 			true,
 		},
 		{
-			`1 in [1, 2, 3] && "foo" in {foo: 0, bar: 1} && "Price" in Ticket`,
+			`1 in [1, 2, 3] && "foo" in {foo: 0, bar: 1} && "Price" in ticket`,
 			true,
 		},
 		// {
@@ -631,15 +643,15 @@ func TestExpr(t *testing.T) {
 		// 	true,
 		// },
 		{
-			`Int32 in [10, 20]`,
+			`int32 in [10, 20]`,
 			false,
 		},
 		{
-			`String matches "s.+"`,
+			`string matches "s.+"`,
 			true,
 		},
 		{
-			`String matches ("^" + String + "$")`,
+			`string matches ("^" + string + "$")`,
 			true,
 		},
 		{
@@ -659,27 +671,19 @@ func TestExpr(t *testing.T) {
 			5,
 		},
 		{
-			`Ticket.Price`,
+			`ticket.price`,
 			100,
 		},
 		{
-			`Add(10, 5) + GetInt()`,
+			`add(10, 5) + getInt()`,
 			15,
-		},
-		{
-			`Ticket.String()`,
-			`$100`,
-		},
-		{
-			`Ticket.PriceDiv(25)`,
-			4,
 		},
 		{
 			`len([1, 2, 3])`,
 			3,
 		},
 		{
-			`len([1, Two, 3])`,
+			`len([1, two, 3])`,
 			3,
 		},
 		{
@@ -691,7 +695,7 @@ func TestExpr(t *testing.T) {
 			12,
 		},
 		{
-			`len(Array)`,
+			`len(array)`,
 			5,
 		},
 		{
@@ -739,7 +743,7 @@ func TestExpr(t *testing.T) {
 			10,
 		},
 		{
-			`Now.After(BirthDay)`,
+			`now.after(birthDay)`,
 			true,
 		},
 		{
@@ -747,11 +751,11 @@ func TestExpr(t *testing.T) {
 			true,
 		},
 		{
-			`Now.Sub(Now).String() == Duration("0s").String()`,
+			`now.sub(now).string() == duration("0s").string()`,
 			true,
 		},
 		{
-			`8.5 * Passengers.Adults * len(Segments)`,
+			`8.5 * passengers.adults * len(segments)`,
 			float64(17),
 		},
 		{
@@ -759,115 +763,111 @@ func TestExpr(t *testing.T) {
 			2,
 		},
 		{
-			`(One * Two) * Three == One * (Two * Three)`,
+			`(one * two) * three == one * (two * three)`,
 			true,
 		},
 		{
-			`Array[0]`,
+			`array[0]`,
 			1,
 		},
 		{
-			`Sum(Array)`,
+			`sum(array)`,
 			15,
 		},
 		{
-			`Array[0] < Array[1]`,
+			`array[0] < array[1]`,
 			true,
 		},
 		{
-			`Sum(MultiDimArray[0])`,
+			`sum(multiDimArray[0])`,
 			6,
 		},
 		{
-			`Sum(MultiDimArray[0]) + Sum(MultiDimArray[1])`,
+			`sum(multiDimArray[0]) + sum(multiDimArray[1])`,
 			12,
 		},
 		{
-			`Inc(Array[0] + Array[1])`,
+			`inc(array[0] + array[1])`,
 			4,
 		},
 		{
-			`Array[0] + Array[1]`,
+			`array[0] + array[1]`,
 			3,
 		},
 		{
-			`Array[1:2]`,
+			`array[1:2]`,
 			[]int{2},
 		},
 		{
-			`Array[0:5] == Array`,
+			`array[0:5] == array`,
 			true,
 		},
 		{
-			`Array[0:] == Array`,
+			`array[0:] == array`,
 			true,
 		},
 		{
-			`Array[:5] == Array`,
+			`array[:5] == array`,
 			true,
 		},
 		{
-			`Array[:] == Array`,
+			`array[:] == array`,
 			true,
 		},
 		{
-			`1 + 2 + Three`,
+			`1 + 2 + three`,
 			6,
 		},
 		{
-			`MapArg({foo: "bar"})`,
+			`mapArg({foo: "bar"})`,
 			"bar",
 		},
 		{
-			`NilStruct`,
+			`nilStruct`,
 			(*time.Time)(nil),
-		},
-		{
-			`Nil == nil && nil == Nil && nil == nil && Nil == Nil && NilInt == nil && NilSlice == nil && NilStruct == nil`,
-			true,
 		},
 		{
 			`0 == nil || "str" == nil || true == nil`,
 			false,
 		},
 		{
-			`Variadic("head", 1, 2, 3)`,
+			`variadic("head", 1, 2, 3)`,
 			[]int{1, 2, 3},
 		},
 		{
-			`Variadic("empty")`,
+			`variadic("empty")`,
 			[]int{},
 		},
 		{
-			`String[:]`,
+			`string[:]`,
 			"string",
 		},
 		{
-			`String[:3]`,
+			`string[:3]`,
 			"str",
 		},
 		{
-			`String[:9]`,
+			`string[:9]`,
 			"string",
 		},
 		{
-			`String[3:9]`,
+			`string[3:9]`,
 			"ing",
 		},
 		{
-			`String[7:9]`,
+			`string[7:9]`,
 			"",
 		},
 		{
-			`Float(0)`,
+			`float(0)`,
 			float64(0),
 		},
 		{
-			`map(filter(Tweets, {len(.Text) > 10}), {Format(.Date)})`,
+			`map(filter(tweets, {len(.text) > 10}), {format(.date)})`,
 			[]interface{}{"23 Oct 17 18:30 UTC", "23 Oct 17 18:30 UTC"},
 		},
 		{
-			`Concat("a", 1, [])`,
+			`concat("a", 1, [])`,
 			`a1[]`,
 		},
 	}
@@ -961,7 +961,7 @@ func TestExpr_calls_with_nil(t *testing.T) {
 	}
 
 	p, err := jsexpr.Compile(
-		"a == nil && equals(b, nil) && is.Nil(c)",
+		"a == nil && equals(b, nil) && is.nil(c)",
 		jsexpr.Env(env),
 		jsexpr.Operator("==", "equals"),
 		jsexpr.AllowUndefinedVariables(),
@@ -1040,7 +1040,7 @@ func TestConstExpr_error_no_env(t *testing.T) {
 
 func TestPatch(t *testing.T) {
 	program, err := jsexpr.Compile(
-		`Ticket == "$100" and "$90" != Ticket + "0"`,
+		`ticket == "$100" and "$90" != ticket + "0"`,
 		jsexpr.Env(mockEnv{}),
 		jsexpr.Patch(&stringerPatcher{}),
 	)
@@ -1056,7 +1056,7 @@ func TestPatch(t *testing.T) {
 
 func TestPatch_length(t *testing.T) {
 	program, err := jsexpr.Compile(
-		`String.length == 5`,
+		`string.length == 5`,
 		jsexpr.Env(mockEnv{}),
 		jsexpr.Patch(&lengthPatcher{}),
 	)
@@ -1119,18 +1119,18 @@ func TestIssue105(t *testing.T) {
 	}
 
 	code := `
-		A.Field == '' &&
-		C.A.Field == '' &&
-		B.Field == 0 &&
-		C.B.Field == 0
+		a.field == '' &&
+		c.a.field == '' &&
+		b.field == 0 &&
+		c.b.field == 0
 	`
 
 	_, err := jsexpr.Compile(code, jsexpr.Env(Env{}))
 	require.NoError(t, err)
 
-	_, err = jsexpr.Compile(`Field == ''`, jsexpr.Env(Env{}))
+	_, err = jsexpr.Compile(`field == ''`, jsexpr.Env(Env{}))
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "ambiguous identifier Field")
+	require.Contains(t, err.Error(), "ambiguous identifier field")
 }
 
 func TestIssue_nested_closures(t *testing.T) {
@@ -1325,7 +1325,7 @@ func (p *stringerPatcher) Exit(node *ast.Node) {
 	if t.Implements(stringer) {
 		ast.Patch(node, &ast.MethodNode{
 			Node:   *node,
-			Method: "String",
+			Method: "string",
 		})
 	}
 
@@ -1462,7 +1462,7 @@ func TestBytepowerExpr(t *testing.T) {
 		},
 		{ // this is traditional Object.Property evaluation, neither PropertyProvider not ValueProvider are implemented
 			// to player Struct, thus, the `Level` property has to be capitalized as public-accessible property.
-			`Player.Level < 10`,
+			`player.level < 10`,
 			true,
 			bpMockEnv{
 				player{
@@ -1477,7 +1477,7 @@ func TestBytepowerExpr(t *testing.T) {
 			map[string]interface{}{"player": mockPlayer{}},
 		},
 		{
-			`player.level.Value < 10`,
+			`player.level.value < 10`,
 			true,
 			map[string]interface{}{"player": mockPlayer{}},
 		},

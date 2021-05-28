@@ -116,3 +116,34 @@ func TestFloatOutofAny(t *testing.T) {
 		}
 	}
 }
+
+func TestStrToLowerCamel(t *testing.T) {
+	type test struct {
+		input    string
+		expected string
+	}
+
+	tests := []test{
+		{
+			input:    `FuncA`,
+			expected: `funcA`,
+		},
+		{
+			input:    `func_a`,
+			expected: `funcA`,
+		},
+		{
+			input:    `GoParameter`,
+			expected: `goParameter`,
+		},
+		{
+			input:    `python_parameter`,
+			expected: `pythonParameter`,
+		},
+	}
+
+	for _, test := range tests {
+		actual := StrToLowerCamel(test.input)
+		assert.Equal(t, test.expected, actual)
+	}
+}

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+
+	"github.com/byte-power/jsexpr/utility"
 )
 
 type Call struct {
@@ -22,6 +24,30 @@ type Call struct {
 // }
 
 type Scope map[string]interface{}
+
+func structReflectionFromTags(from reflect.Value) map[string]reflect.Value {
+	if from.Kind() != reflect.Struct {
+		panic("only accept struct to produce reflection")
+	}
+	t := from.Type()
+
+	m := make(map[string]reflect.Value, t.NumField())
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		if field.Anonymous && field.Type.Kind() == reflect.Struct {
+			for name, value := range structReflectionFromTags(from.FieldByName(field.Name)) {
+				m[name] = value
+			}
+		}
+		tag := utility.GetFieldTagName(field)
+		if tag == "" {
+			// empty string means this field is asked to ignore by provider.
+			continue
+		}
+		m[tag] = from.FieldByName(field.Name)
+	}
+	return m
+}
 
 func fetch(from interface{}, i interface{}) interface{} {
 	v := reflect.ValueOf(from)
@@ -57,9 +83,15 @@ func fetch(from interface{}, i interface{}) interface{} {
 		if provider, ok := from.(PropertyProvider); ok {
 			return provider.FetchProperty(reflect.ValueOf(i).String())
 		}
-		value := v.FieldByName(reflect.ValueOf(i).String())
-		if value.IsValid() && value.CanInterface() {
+		// value := v.FieldByName(reflect.ValueOf(i).String())
+		// if value.IsValid() && value.CanInterface() {
+		// 	return value.Interface()
+		// }
+
+		structReflection := structReflectionFromTags(v)
+		if value, ok := structReflection[i.(string)]; ok && value.IsValid() && value.CanInterface() {
 			return value.Interface()
+
 		}
 	}
 
