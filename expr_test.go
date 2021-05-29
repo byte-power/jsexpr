@@ -1407,6 +1407,31 @@ func TestBytepowerExpr(t *testing.T) {
 
 	tests := []test{
 		{
+			`Math.pow(2.0,3.0)`,
+			float64(8),
+			nil,
+		},
+		{
+			`Math.trunc(11.22)`,
+			float64(11),
+			nil,
+		},
+		{
+			`Math.ceil(3.2)`,
+			float64(4),
+			nil,
+		},
+		{
+			`Math.PI > 3`,
+			true,
+			nil,
+		},
+		{
+			`Math.E < 3`,
+			true,
+			nil,
+		},
+		{
 			`Date.now() == "test"`,
 			true,
 			bpMockEnv2{
@@ -1744,4 +1769,19 @@ type bpMockEnv2 struct {
 
 type dummy3 struct {
 	Now func() string
+}
+
+func TestOverflowedParams(t *testing.T) {
+	input := `sum(1,2,3,4,5,6)`
+	sum := func(a, b int) int {
+		return a + b
+	}
+
+	var env struct {
+		Sum func(int, int) int
+	}
+	env.Sum = sum
+
+	_, err := jsexpr.Compile(input, jsexpr.Env(env))
+	assert.Nil(t, err)
 }

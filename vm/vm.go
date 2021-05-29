@@ -2,9 +2,11 @@ package vm
 
 import (
 	"fmt"
+	"math/rand"
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/byte-power/jsexpr/builtin"
 	"github.com/byte-power/jsexpr/file"
@@ -69,51 +71,55 @@ func (vm *VM) init(program *Program) {
 
 	vm.builtinFuncs = builtin.Funcs()
 	vm.builtinObjs = builtin.Objs()
+
+	rand.Seed(time.Now().UnixNano())
 }
 
 func (vm *VM) fetch(from interface{}, i interface{}) interface{} {
-	v := reflect.ValueOf(from)
-	kind := v.Kind()
+	if from != nil {
+		v := reflect.ValueOf(from)
+		kind := v.Kind()
 
-	// Structures can be access through a pointer or through a value, when they
-	// are accessed through a pointer we don't want to copy them to a value.
-	if kind == reflect.Ptr && reflect.Indirect(v).Kind() == reflect.Struct {
-		v = reflect.Indirect(v)
-		kind = v.Kind()
-	}
-
-	switch kind {
-
-	case reflect.Array, reflect.Slice, reflect.String:
-		value := v.Index(toInt(i))
-		if value.IsValid() && value.CanInterface() {
-			return value.Interface()
+		// Structures can be access through a pointer or through a value, when they
+		// are accessed through a pointer we don't want to copy them to a value.
+		if kind == reflect.Ptr && reflect.Indirect(v).Kind() == reflect.Struct {
+			v = reflect.Indirect(v)
+			kind = v.Kind()
 		}
 
-	case reflect.Map:
-		value := v.MapIndex(reflect.ValueOf(i))
-		if value.IsValid() {
-			if value.CanInterface() {
+		switch kind {
+
+		case reflect.Array, reflect.Slice, reflect.String:
+			value := v.Index(toInt(i))
+			if value.IsValid() && value.CanInterface() {
 				return value.Interface()
 			}
-		} else {
-			elem := reflect.TypeOf(from).Elem()
-			return reflect.Zero(elem).Interface()
-		}
 
-	case reflect.Struct:
-		if provider, ok := from.(PropertyProvider); ok {
-			return provider.FetchProperty(reflect.ValueOf(i).String())
-		}
-		// value := v.FieldByName(reflect.ValueOf(i).String())
-		// if value.IsValid() && value.CanInterface() {
-		// 	return value.Interface()
-		// }
+		case reflect.Map:
+			value := v.MapIndex(reflect.ValueOf(i))
+			if value.IsValid() {
+				if value.CanInterface() {
+					return value.Interface()
+				}
+			} else {
+				elem := reflect.TypeOf(from).Elem()
+				return reflect.Zero(elem).Interface()
+			}
 
-		structReflection := structReflectionFromTags(v)
-		if value, ok := structReflection[i.(string)]; ok && value.IsValid() && value.CanInterface() {
-			return value.Interface()
+		case reflect.Struct:
+			if provider, ok := from.(PropertyProvider); ok {
+				return provider.FetchProperty(reflect.ValueOf(i).String())
+			}
+			// value := v.FieldByName(reflect.ValueOf(i).String())
+			// if value.IsValid() && value.CanInterface() {
+			// 	return value.Interface()
+			// }
 
+			structReflection := structReflectionFromTags(v)
+			if value, ok := structReflection[i.(string)]; ok && value.IsValid() && value.CanInterface() {
+				return value.Interface()
+
+			}
 		}
 	}
 
@@ -375,6 +381,8 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			b := vm.constant()
 			vm.push(vm.fetch(a, b))
 
+		//TODO: let call.Size not being a restriction of how many arguments could a function accept,
+		// use reflect.Func.NumIn to trim enough arguments for calling the func instead
 		case OpCall:
 			// call := vm.constant().(Call)
 			call := vm.getCall()

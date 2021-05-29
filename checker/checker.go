@@ -377,60 +377,60 @@ func (v *visitor) checkFunc(fn reflect.Type, method bool, node ast.Node, name st
 		return v.error(node, "func %v returns more then one value", name)
 	}
 
-	numIn := fn.NumIn()
+	// numIn := fn.NumIn()
 
-	// If func is method on an env, first argument should be a receiver,
-	// and actual arguments less then numIn by one.
-	if method {
-		numIn--
-	}
+	// // If func is method on an env, first argument should be a receiver,
+	// // and actual arguments less then numIn by one.
+	// if method {
+	// 	numIn--
+	// }
 
-	if fn.IsVariadic() {
-		if len(arguments) < numIn-1 {
-			return v.error(node, "not enough arguments to call %v", name)
-		}
-	} else {
-		if len(arguments) > numIn {
-			return v.error(node, "too many arguments to call %v", name)
-		}
-		if len(arguments) < numIn {
-			return v.error(node, "not enough arguments to call %v", name)
-		}
-	}
+	// if fn.IsVariadic() {
+	// 	if len(arguments) < numIn-1 {
+	// 		return v.error(node, "not enough arguments to call %v", name)
+	// 	}
+	// } else {
+	// 	if len(arguments) > numIn {
+	// 		return v.error(node, "too many arguments to call %v", name)
+	// 	}
+	// 	if len(arguments) < numIn {
+	// 		return v.error(node, "not enough arguments to call %v", name)
+	// 	}
+	// }
 
-	offset := 0
+	// offset := 0
 
-	// Skip first argument in case of the receiver.
-	if method {
-		offset = 1
-	}
+	// // Skip first argument in case of the receiver.
+	// if method {
+	// 	offset = 1
+	// }
 
-	for i, arg := range arguments {
-		t := v.visit(arg)
+	// for i, arg := range arguments {
+	// 	t := v.visit(arg)
 
-		var in reflect.Type
-		if fn.IsVariadic() && i >= numIn-1 {
-			// For variadic arguments fn(xs ...int), go replaces type of xs (int) with ([]int).
-			// As we compare arguments one by one, we need underling type.
-			in = fn.In(fn.NumIn() - 1)
-			in, _ = indexType(in)
-		} else {
-			in = fn.In(i + offset)
-		}
+	// 	var in reflect.Type
+	// 	if fn.IsVariadic() && i >= numIn-1 {
+	// 		// For variadic arguments fn(xs ...int), go replaces type of xs (int) with ([]int).
+	// 		// As we compare arguments one by one, we need underling type.
+	// 		in = fn.In(fn.NumIn() - 1)
+	// 		in, _ = indexType(in)
+	// 	} else {
+	// 		in = fn.In(i + offset)
+	// 	}
 
-		if isIntegerOrArithmeticOperation(arg) {
-			t = in
-			setTypeForIntegers(arg, t)
-		}
+	// 	if isIntegerOrArithmeticOperation(arg) {
+	// 		t = in
+	// 		setTypeForIntegers(arg, t)
+	// 	}
 
-		if t == nil {
-			continue
-		}
+	// 	if t == nil {
+	// 		continue
+	// 	}
 
-		if !t.AssignableTo(in) && t.Kind() != reflect.Interface {
-			return v.error(arg, "cannot use %v as argument (type %v) to call %v ", t, in, name)
-		}
-	}
+	// 	if !t.AssignableTo(in) && t.Kind() != reflect.Interface {
+	// 		return v.error(arg, "cannot use %v as argument (type %v) to call %v ", t, in, name)
+	// 	}
+	// }
 
 	return fn.Out(0)
 }

@@ -41,3 +41,12 @@ func jsParseFloat(inputs ...interface{}) interface{} {
 	}
 	return utility.FloatOutofAny(inputs[0])
 }
+
+type JSCall interface {
+	Call(in ...interface{}) interface{}
+}
+
+type JSFunction struct {
+	minimumParamNum  int
+	optionalParamNum int
+}
