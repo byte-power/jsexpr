@@ -173,6 +173,19 @@ func (vm *VM) fetchFn(from interface{}, name string) reflect.Value {
 	panic(fmt.Sprintf(`cannot get "%v" from %T, also not found in vm's environment`, name, from))
 }
 
+func (vm *VM) callFunc(fn reflect.Value, input []reflect.Value, callVariadic bool) []reflect.Value {
+	fType := fn.Type()
+	castedInput := make([]reflect.Value, fType.NumIn())
+	for i := 0; i < fType.NumIn(); i++ {
+		castedInput[i] = utility.ReflectCast(fType.In(i).Kind(), input[i])
+	}
+	if callVariadic {
+		return fn.CallSlice(castedInput)
+	} else {
+		return fn.Call(castedInput)
+	}
+}
+
 func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -384,7 +397,6 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 		//TODO: let call.Size not being a restriction of how many arguments could a function accept,
 		// use reflect.Func.NumIn to trim enough arguments for calling the func instead
 		case OpCall:
-			// call := vm.constant().(Call)
 			call := vm.getCall()
 			in := make([]reflect.Value, call.Size)
 			for i := call.Size - 1; i >= 0; i-- {
@@ -397,12 +409,19 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 					in[i] = reflect.ValueOf(param)
 				}
 			}
-			//out := FetchFn(env, call.Name).Call(in)
-			out := vm.fetchFn(env, call.Name).Call(in)
+			f := vm.fetchFn(env, call.Name)
+			fType := f.Type()
+			numIn := fType.NumIn()
+			var hasVariadic bool
+			if call.Size > numIn && fType.IsVariadic() {
+				input := utility.MakeVariadicFuncInput(fType.In(numIn-1).Elem().Kind(), in, numIn-1)
+				in[numIn-1] = input
+				hasVariadic = true
+			}
+			out := vm.callFunc(f, in, hasVariadic)
 			vm.push(out[0].Interface())
 
 		case OpCallFast:
-			// call := vm.constant().(Call)
 			call := vm.getCall()
 			in := make([]interface{}, call.Size)
 			for i := call.Size - 1; i >= 0; i-- {
@@ -412,7 +431,6 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			vm.push(fn.(func(...interface{}) interface{})(in...))
 
 		case OpMethod:
-			// call := vm.constants[vm.arg()].(Call)
 			call := vm.getCall()
 			in := make([]reflect.Value, call.Size)
 			for i := call.Size - 1; i >= 0; i-- {
@@ -425,7 +443,16 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 					in[i] = reflect.ValueOf(param)
 				}
 			}
-			out := vm.fetchFn(vm.pop(), call.Name).Call(in)
+			f := vm.fetchFn(vm.pop(), call.Name)
+			fType := f.Type()
+			numIn := fType.NumIn()
+			var hasVariadic bool
+			if call.Size > numIn && fType.IsVariadic() {
+				input := utility.MakeVariadicFuncInput(fType.In(numIn-1).Elem().Kind(), in, numIn-1)
+				in[numIn-1] = input
+				hasVariadic = true
+			}
+			out := vm.callFunc(f, in, hasVariadic)
 			vm.push(out[0].Interface())
 
 		case OpArray:

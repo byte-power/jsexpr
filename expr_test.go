@@ -1407,7 +1407,7 @@ func TestBytepowerExpr(t *testing.T) {
 
 	tests := []test{
 		{
-			`Math.pow(2.0,3.0)`,
+			`Math.pow(2,3)`,
 			float64(8),
 			nil,
 		},
@@ -1773,15 +1773,23 @@ type dummy3 struct {
 
 func TestOverflowedParams(t *testing.T) {
 	input := `sum(1,2,3,4,5,6)`
-	sum := func(a, b int) int {
-		return a + b
+	sum := func(nums ...int) int {
+		sum := 0
+		for _, num := range nums {
+			sum += num
+		}
+		return sum
 	}
 
 	var env struct {
-		Sum func(int, int) int
+		Sum func(...int) int
 	}
 	env.Sum = sum
 
-	_, err := jsexpr.Compile(input, jsexpr.Env(env))
+	prg, err := jsexpr.Compile(input, jsexpr.Env(env))
 	assert.Nil(t, err)
+
+	out, err := jsexpr.Run(prg, env)
+	assert.Nil(t, err)
+	assert.Equal(t, 21, out)
 }
