@@ -1407,7 +1407,7 @@ func TestBytepowerExpr(t *testing.T) {
 
 	tests := []test{
 		{
-			`Math.pow(2,3)`,
+			`Math.pow(2,3,4,5)`,
 			float64(8),
 			nil,
 		},

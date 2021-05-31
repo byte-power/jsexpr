@@ -40,7 +40,7 @@ var objects = map[string]interface{}{
 		Floor: math.Floor,
 		//Fround: ,
 
-		Hypot: math.Hypot,
+		Hypot: jsHypotenuse,
 
 		// Imul: bits.mu,
 
@@ -49,15 +49,15 @@ var objects = map[string]interface{}{
 		Log2:  math.Log2,
 		Log10: math.Log10,
 
-		Max: math.Max,
-		Min: math.Min,
+		Max: jsMax,
+		Min: jsMin,
 
 		Pow: math.Pow,
 
 		Random: rand.Float64,
 		Round:  math.Round,
 
-		// Sign: math.Signbit,
+		Sign: jsMathSign,
 		Sin:  math.Sin,
 		Sinh: math.Sinh,
 		Sqrt: math.Sqrt,
@@ -118,7 +118,7 @@ type mathObject struct {
 	Floor  func(x float64) float64 `jsexpr:"floor"`
 	Fround func(x float64) float64 `jsexpr:"fround"`
 
-	Hypot func(p, q float64) float64 `jsexpr:"hypot"`
+	Hypot func(nums ...float64) float64 `jsexpr:"hypot"`
 
 	Imul func(x, y float64) float64 `jsexpr:"imul"`
 
@@ -127,8 +127,8 @@ type mathObject struct {
 	Log2  func(x float64) float64 `jsexpr:"log2"`
 	Log10 func(x float64) float64 `jsexpr:"log10"`
 
-	Max func(x, y float64) float64 `jsexpr:"max"`
-	Min func(x, y float64) float64 `jsexpr:"min"`
+	Max func(nums ...float64) float64 `jsexpr:"max"`
+	Min func(nums ...float64) float64 `jsexpr:"min"`
 
 	Pow func(x, y float64) float64 `jsexpr:"pow"`
 
@@ -143,4 +143,43 @@ type mathObject struct {
 	Tan   func(x float64) float64 `jsexpr:"tan"`
 	Tanh  func(x float64) float64 `jsexpr:"tanh"`
 	Trunc func(x float64) float64 `jsexpr:"trunc"`
+}
+
+func jsMathSign(x float64) int {
+	if x == 0 {
+		return 0
+	}
+	if x > 0 {
+		return 1
+	}
+	return -1
+}
+
+//弦
+func jsHypotenuse(nums ...float64) float64 {
+	sum := float64(0)
+	for _, num := range nums {
+		sum += math.Pow(num, 2)
+	}
+	return math.Sqrt(sum)
+}
+
+func jsMax(nums ...float64) float64 {
+	pivot := math.Inf(-1)
+	for _, num := range nums {
+		if num > pivot {
+			pivot = num
+		}
+	}
+	return pivot
+}
+
+func jsMin(nums ...float64) float64 {
+	pivot := math.Inf(+1)
+	for _, num := range nums {
+		if num < pivot {
+			pivot = num
+		}
+	}
+	return pivot
 }
