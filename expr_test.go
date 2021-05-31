@@ -3,6 +3,7 @@ package jsexpr_test
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -338,8 +339,9 @@ func ExampleAllowUndefinedVariables_zero_value() {
 	}
 
 	env = map[string]string{
-		"foo": "Hello, ",
-		"bar": "world!",
+		"foo":  "Hello, ",
+		"bar":  "world!",
+		"name": "",
 	}
 
 	output, err := jsexpr.Run(program, env)
@@ -352,32 +354,32 @@ func ExampleAllowUndefinedVariables_zero_value() {
 	// Output: Hello, world!
 }
 
-func ExampleAllowUndefinedVariables_zero_value_functions() {
-	code := `words == "" ? split("foo,bar", ",") : split(words, ",")`
+// func ExampleAllowUndefinedVariables_zero_value_functions() {
+// 	code := `words == "" ? split("foo,bar", ",") : split(words, ",")`
 
-	// Env is map[string]string type on which methods are defined.
-	env := mockMapStringStringEnv{}
+// 	// Env is map[string]string type on which methods are defined.
+// 	env := mockMapStringStringEnv{}
 
-	options := []jsexpr.Option{
-		jsexpr.Env(env),
-		jsexpr.AllowUndefinedVariables(), // Allow to use undefined variables.
-	}
+// 	options := []jsexpr.Option{
+// 		jsexpr.Env(env),
+// 		jsexpr.AllowUndefinedVariables(), // Allow to use undefined variables.
+// 	}
 
-	program, err := jsexpr.Compile(code, options...)
-	if err != nil {
-		fmt.Printf("%v", err)
-		return
-	}
+// 	program, err := jsexpr.Compile(code, options...)
+// 	if err != nil {
+// 		fmt.Printf("%v", err)
+// 		return
+// 	}
 
-	output, err := jsexpr.Run(program, env)
-	if err != nil {
-		fmt.Printf("%v", err)
-		return
-	}
-	fmt.Printf("%v", output)
+// 	output, err := jsexpr.Run(program, env)
+// 	if err != nil {
+// 		fmt.Printf("%v", err)
+// 		return
+// 	}
+// 	fmt.Printf("%v", output)
 
-	// Output: [foo bar]
-}
+// 	// Output: [foo bar]
+// }
 
 func ExamplePatch() {
 	/*
@@ -518,6 +520,10 @@ func TestExpr(t *testing.T) {
 		code string
 		want interface{}
 	}{
+		{
+			`variadic("empty")`,
+			[]int{},
+		},
 		{
 			`ticket.string()`,
 			`$100`,
@@ -835,10 +841,6 @@ func TestExpr(t *testing.T) {
 			[]int{1, 2, 3},
 		},
 		{
-			`variadic("empty")`,
-			[]int{},
-		},
-		{
 			`string[:]`,
 			"string",
 		},
@@ -914,21 +916,21 @@ func TestExpr_fetch_from_func(t *testing.T) {
 	assert.Contains(t, err.Error(), "cannot fetch Value from func()")
 }
 
-func TestExpr_map_default_values(t *testing.T) {
-	env := map[string]interface{}{
-		"foo": map[string]string{},
-		"bar": map[string]*string{},
-	}
+// func TestExpr_map_default_values(t *testing.T) {
+// 	env := map[string]interface{}{
+// 		"foo": map[string]string{},
+// 		"bar": map[string]*string{},
+// 	}
 
-	input := `foo['missing'] == '' && bar['missing'] == nil`
+// 	input := `foo['missing'] == '' && bar['missing'] == nil`
 
-	program, err := jsexpr.Compile(input, jsexpr.Env(env))
-	require.NoError(t, err)
+// 	program, err := jsexpr.Compile(input, jsexpr.Env(env))
+// 	require.NoError(t, err)
 
-	output, err := jsexpr.Run(program, env)
-	require.NoError(t, err)
-	require.Equal(t, true, output)
-}
+// 	output, err := jsexpr.Run(program, env)
+// 	require.NoError(t, err)
+// 	require.Equal(t, true, output)
+// }
 
 func TestExpr_map_default_values_compile_check(t *testing.T) {
 	tests := []struct {
@@ -950,28 +952,28 @@ func TestExpr_map_default_values_compile_check(t *testing.T) {
 	}
 }
 
-func TestExpr_calls_with_nil(t *testing.T) {
-	env := map[string]interface{}{
-		"equals": func(a, b interface{}) interface{} {
-			assert.Nil(t, a, "a is not nil")
-			assert.Nil(t, b, "b is not nil")
-			return a == b
-		},
-		"is": is{},
-	}
+// func TestExpr_calls_with_nil(t *testing.T) {
+// 	env := map[string]interface{}{
+// 		"equals": func(a, b interface{}) interface{} {
+// 			assert.Nil(t, a, "a is not nil")
+// 			assert.Nil(t, b, "b is not nil")
+// 			return a == b
+// 		},
+// 		"is": is{},
+// 	}
 
-	p, err := jsexpr.Compile(
-		"a == nil && equals(b, nil) && is.nil(c)",
-		jsexpr.Env(env),
-		jsexpr.Operator("==", "equals"),
-		jsexpr.AllowUndefinedVariables(),
-	)
-	require.NoError(t, err)
+// 	p, err := jsexpr.Compile(
+// 		"a == nil && equals(b, nil) && is.nil(c)",
+// 		jsexpr.Env(env),
+// 		jsexpr.Operator("==", "equals"),
+// 		jsexpr.AllowUndefinedVariables(),
+// 	)
+// 	require.NoError(t, err)
 
-	out, err := jsexpr.Run(p, env)
-	require.NoError(t, err)
-	require.Equal(t, true, out)
-}
+// 	out, err := jsexpr.Run(p, env)
+// 	require.NoError(t, err)
+// 	require.Equal(t, true, out)
+// }
 
 func TestExpr_call_floatarg_func_with_int(t *testing.T) {
 	env := map[string]interface{}{
@@ -1763,8 +1765,15 @@ type koala struct {
 }
 
 type bpMockEnv2 struct {
-	Panda panda  `jsexpr:"Panda"`
-	Date  dummy3 `jsexpr:"Date"`
+	Panda         panda  `jsexpr:"Panda"`
+	Date          dummy3 `jsexpr:"Date"`
+	RightTriangle triangle
+}
+
+type triangle struct {
+	Edge1 float64
+	Edge2 float64
+	Edge3 float64
 }
 
 type dummy3 struct {
@@ -1792,4 +1801,108 @@ func TestOverflowedParams(t *testing.T) {
 	out, err := jsexpr.Run(prg, env)
 	assert.Nil(t, err)
 	assert.Equal(t, 21, out)
+}
+
+func TestBytepowerBuiltinObject(t *testing.T) {
+	type test struct {
+		input    string
+		expected interface{}
+		env      interface{}
+	}
+	tests := []test{
+		{
+			`Math.hypot(rightTriangle.edge1, rightTriangle.edge2) == rightTriangle.edge3 ? "right triangle" : "normal triangle"`,
+			"right triangle",
+			&bpMockEnv2{
+				RightTriangle: triangle{
+					Edge1: 3,
+					Edge2: 4,
+					Edge3: 5,
+				},
+			},
+		},
+		{
+			`Math.max(a,b,c,d,e,f,g)`,
+			float64(7),
+			map[string]interface{}{
+				"a": 0,
+				"b": 1,
+				"c": 2,
+				"d": 3,
+				"e": 4,
+				"f": 7,
+				"g": 6,
+			},
+		},
+		{
+			`Math.hypot(rightTriangle.edge1, rightTriangle.edge2) == rightTriangle.edge3`,
+			true,
+			&bpMockEnv2{
+				RightTriangle: triangle{
+					Edge1: 3,
+					Edge2: 4,
+					Edge3: 5,
+				},
+			},
+		},
+		{
+			`parseTime(Date.now()).year()`,
+			2021,
+			map[string]interface{}{
+				"parseTime": parseTime,
+			},
+		},
+		{
+			`Math.ceil("0.95", "i", "don't", "give", "a", "fxxx", 3, "or", 4, "params are passed")`,
+			float64(1),
+			nil,
+		},
+		{
+			`Math.ceil(f)`,
+			float64(1),
+			map[string]interface{}{
+				"f": "0.95",
+			},
+		},
+		{
+			`Math.ceil(f)`,
+			float64(1),
+			map[string]interface{}{
+				"f": float64(0.95),
+			},
+		},
+		{
+			`Math.abs(4.5) + Math.abs(-.5)`,
+			float64(5),
+			nil,
+		},
+		{
+			`Math.cos(0.8) > 0.6435`,
+			true,
+			nil,
+		},
+		{
+			`Math.atanh(1)`,
+			math.Inf(+1),
+			nil,
+		},
+		{
+			`Math.cbrt(-64)`,
+			float64(-4),
+			nil,
+		},
+	}
+
+	for _, test := range tests {
+		prg, err := jsexpr.Compile(test.input)
+		assert.Nil(t, err)
+
+		out, err := jsexpr.Run(prg, test.env)
+		assert.Nil(t, err)
+		assert.Equal(t, test.expected, out)
+	}
+}
+
+func parseTime(unixTS int64) time.Time {
+	return time.Unix(unixTS, 0)
 }

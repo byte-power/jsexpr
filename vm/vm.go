@@ -101,10 +101,11 @@ func (vm *VM) fetch(from interface{}, i interface{}) interface{} {
 				if value.CanInterface() {
 					return value.Interface()
 				}
-			} else {
-				elem := reflect.TypeOf(from).Elem()
-				return reflect.Zero(elem).Interface()
 			}
+			//  else {
+			// 	elem := reflect.TypeOf(from).Elem()
+			// 	return reflect.Zero(elem).Interface()
+			// }
 
 		case reflect.Struct:
 			if provider, ok := from.(PropertyProvider); ok {
@@ -175,15 +176,21 @@ func (vm *VM) fetchFn(from interface{}, name string) reflect.Value {
 
 func (vm *VM) callFunc(fn reflect.Value, input []reflect.Value, callVariadic bool) []reflect.Value {
 	fType := fn.Type()
-	castedInput := make([]reflect.Value, fType.NumIn())
-	for i := 0; i < fType.NumIn(); i++ {
-		castedInput[i] = utility.ReflectCast(fType.In(i).Kind(), input[i])
-	}
-	if callVariadic {
-		return fn.CallSlice(castedInput)
-	} else {
+
+	if !callVariadic {
+		castedInput := make([]reflect.Value, len(input))
+		for i := 0; i < len(input); i++ {
+			castedInput[i] = utility.ReflectCast(fType.In(i).Kind(), input[i])
+		}
 		return fn.Call(castedInput)
+	} else {
+		castedInput := make([]reflect.Value, fType.NumIn())
+		for i := 0; i < fType.NumIn(); i++ {
+			castedInput[i] = utility.ReflectCast(fType.In(i).Kind(), input[i])
+		}
+		return fn.CallSlice(castedInput)
 	}
+
 }
 
 func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error) {
@@ -418,7 +425,14 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 				in[numIn-1] = input
 				hasVariadic = true
 			}
-			out := vm.callFunc(f, in, hasVariadic)
+			validParams := func() int {
+				if call.Size > numIn {
+					return numIn
+				} else {
+					return call.Size
+				}
+			}()
+			out := vm.callFunc(f, in[:validParams], hasVariadic)
 			vm.push(out[0].Interface())
 
 		case OpCallFast:
@@ -452,7 +466,14 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 				in[numIn-1] = input
 				hasVariadic = true
 			}
-			out := vm.callFunc(f, in, hasVariadic)
+			validParams := func() int {
+				if call.Size > numIn {
+					return numIn
+				} else {
+					return call.Size
+				}
+			}()
+			out := vm.callFunc(f, in[:validParams], hasVariadic)
 			vm.push(out[0].Interface())
 
 		case OpArray:
