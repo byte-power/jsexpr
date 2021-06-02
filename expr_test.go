@@ -49,7 +49,7 @@ func ExampleCompile() {
 		"bar": 99,
 	}
 
-	program, err := jsexpr.Compile("foo in 1..99 and bar in 1..99", jsexpr.Env(env))
+	program, err := jsexpr.Compile("foo in 1..99 and bar in 1..99", jsexpr.TypeCheck(env))
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -85,7 +85,7 @@ func ExampleEnv() {
 
 	code := `all(segments, {.origin == "MOW"}) && passengers.adults > 0 && tags["foo"] startsWith "bar"`
 
-	program, err := jsexpr.Compile(code, jsexpr.Env(Env{}))
+	program, err := jsexpr.Compile(code, jsexpr.TypeCheck(Env{}))
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -122,7 +122,7 @@ func ExampleAsBool() {
 		"foo": 0,
 	}
 
-	program, err := jsexpr.Compile("foo >= 0", jsexpr.Env(env), jsexpr.AsBool())
+	program, err := jsexpr.Compile("foo >= 0", jsexpr.TypeCheck(env), jsexpr.AsBool())
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -144,7 +144,7 @@ func ExampleAsBool_error() {
 		"foo": 0,
 	}
 
-	_, err := jsexpr.Compile("foo + 42", jsexpr.Env(env), jsexpr.AsBool())
+	_, err := jsexpr.Compile("foo + 42", jsexpr.TypeCheck(env), jsexpr.AsBool())
 
 	fmt.Printf("%v", err)
 
@@ -182,7 +182,7 @@ func ExampleAsInt64() {
 		"rating": 5.5,
 	}
 
-	program, err := jsexpr.Compile("rating", jsexpr.Env(env), jsexpr.AsInt64())
+	program, err := jsexpr.Compile("rating", jsexpr.TypeCheck(env), jsexpr.AsInt64())
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -213,7 +213,7 @@ func ExampleOperator() {
 	}
 
 	options := []jsexpr.Option{
-		jsexpr.Env(Env{}),
+		jsexpr.TypeCheck(Env{}),
 		jsexpr.Operator(">", "after"),
 		jsexpr.Operator("-", "sub"),
 	}
@@ -258,7 +258,7 @@ func ExampleConstExpr() {
 	}
 
 	options := []jsexpr.Option{
-		jsexpr.Env(env),
+		jsexpr.TypeCheck(env),
 		jsexpr.ConstExpr("fib"), // Mark fib func as constant expression.
 	}
 
@@ -290,7 +290,7 @@ func ExampleAllowUndefinedVariables() {
 	}
 
 	options := []jsexpr.Option{
-		jsexpr.Env(env),
+		jsexpr.TypeCheck(env),
 		jsexpr.AllowUndefinedVariables(), // Allow to use undefined variables.
 	}
 
@@ -319,67 +319,6 @@ func ExampleAllowUndefinedVariables() {
 	// Output: Hello, world!
 	// Hello, you!
 }
-
-func ExampleAllowUndefinedVariables_zero_value() {
-	code := `name == "" ? foo + bar : foo + name`
-
-	// If environment has different zero values, then undefined variables
-	// will have it as default value.
-	env := map[string]string{}
-
-	options := []jsexpr.Option{
-		jsexpr.Env(env),
-		jsexpr.AllowUndefinedVariables(), // Allow to use undefined variables.
-	}
-
-	program, err := jsexpr.Compile(code, options...)
-	if err != nil {
-		fmt.Printf("%v", err)
-		return
-	}
-
-	env = map[string]string{
-		"foo":  "Hello, ",
-		"bar":  "world!",
-		"name": "",
-	}
-
-	output, err := jsexpr.Run(program, env)
-	if err != nil {
-		fmt.Printf("%v", err)
-		return
-	}
-	fmt.Printf("%v", output)
-
-	// Output: Hello, world!
-}
-
-// func ExampleAllowUndefinedVariables_zero_value_functions() {
-// 	code := `words == "" ? split("foo,bar", ",") : split(words, ",")`
-
-// 	// Env is map[string]string type on which methods are defined.
-// 	env := mockMapStringStringEnv{}
-
-// 	options := []jsexpr.Option{
-// 		jsexpr.Env(env),
-// 		jsexpr.AllowUndefinedVariables(), // Allow to use undefined variables.
-// 	}
-
-// 	program, err := jsexpr.Compile(code, options...)
-// 	if err != nil {
-// 		fmt.Printf("%v", err)
-// 		return
-// 	}
-
-// 	output, err := jsexpr.Run(program, env)
-// 	if err != nil {
-// 		fmt.Printf("%v", err)
-// 		return
-// 	}
-// 	fmt.Printf("%v", output)
-
-// 	// Output: [foo bar]
-// }
 
 func ExamplePatch() {
 	/*
@@ -430,7 +369,7 @@ func TestOperator_struct(t *testing.T) {
 
 	code := `birthDay == "2017-10-23"`
 
-	program, err := jsexpr.Compile(code, jsexpr.Env(&mockEnv{}), jsexpr.Operator("==", "dateEqual"))
+	program, err := jsexpr.Compile(code, jsexpr.TypeCheck(&mockEnv{}), jsexpr.Operator("==", "dateEqual"))
 	require.NoError(t, err)
 
 	output, err := jsexpr.Run(program, env)
@@ -447,7 +386,7 @@ func TestOperator_interface(t *testing.T) {
 
 	program, err := jsexpr.Compile(
 		code,
-		jsexpr.Env(&mockEnv{}),
+		jsexpr.TypeCheck(&mockEnv{}),
 		jsexpr.Operator("==", "stringerStringEqual", "stringStringerEqual", "stringerStringerEqual"),
 		jsexpr.Operator("!=", "notStringerStringEqual", "notStringStringerEqual", "notStringerStringerEqual"),
 	)
@@ -467,7 +406,7 @@ func TestExpr_readme_example(t *testing.T) {
 
 	code := `sprintf(greet, names[0])`
 
-	program, err := jsexpr.Compile(code, jsexpr.Env(env))
+	program, err := jsexpr.Compile(code, jsexpr.TypeCheck(env))
 	require.NoError(t, err)
 
 	output, err := jsexpr.Run(program, env)
@@ -640,14 +579,6 @@ func TestExpr(t *testing.T) {
 			`1 in [1, 2, 3] && "foo" in {foo: 0, bar: 1} && "Price" in ticket`,
 			true,
 		},
-		// {
-		// 	`1 in [1.5] || 1 not in [1]`,
-		// 	false,
-		// },
-		// {
-		// 	`One in 0..1 && Two not in 0..1`,
-		// 	true,
-		// },
 		{
 			`int32 in [10, 20]`,
 			false,
@@ -875,7 +806,7 @@ func TestExpr(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		program, err := jsexpr.Compile(tt.code, jsexpr.Env(&mockEnv{}))
+		program, err := jsexpr.Compile(tt.code, jsexpr.TypeCheck(&mockEnv{}))
 		require.NoError(t, err, "compile error")
 
 		got, err := jsexpr.Run(program, env)
@@ -903,7 +834,7 @@ func TestExpr(t *testing.T) {
 }
 
 func TestExpr_eval_with_env(t *testing.T) {
-	_, err := jsexpr.Eval("true", jsexpr.Env(map[string]interface{}{}))
+	_, err := jsexpr.Eval("true", jsexpr.TypeCheck(map[string]interface{}{}))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "misused")
 }
@@ -915,22 +846,6 @@ func TestExpr_fetch_from_func(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot fetch Value from func()")
 }
-
-// func TestExpr_map_default_values(t *testing.T) {
-// 	env := map[string]interface{}{
-// 		"foo": map[string]string{},
-// 		"bar": map[string]*string{},
-// 	}
-
-// 	input := `foo['missing'] == '' && bar['missing'] == nil`
-
-// 	program, err := jsexpr.Compile(input, jsexpr.Env(env))
-// 	require.NoError(t, err)
-
-// 	output, err := jsexpr.Run(program, env)
-// 	require.NoError(t, err)
-// 	require.Equal(t, true, output)
-// }
 
 func TestExpr_map_default_values_compile_check(t *testing.T) {
 	tests := []struct {
@@ -947,33 +862,10 @@ func TestExpr_map_default_values_compile_check(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		_, err := jsexpr.Compile(tt.input, jsexpr.Env(tt.env), jsexpr.AllowUndefinedVariables())
+		_, err := jsexpr.Compile(tt.input, jsexpr.TypeCheck(tt.env), jsexpr.AllowUndefinedVariables())
 		require.NoError(t, err)
 	}
 }
-
-// func TestExpr_calls_with_nil(t *testing.T) {
-// 	env := map[string]interface{}{
-// 		"equals": func(a, b interface{}) interface{} {
-// 			assert.Nil(t, a, "a is not nil")
-// 			assert.Nil(t, b, "b is not nil")
-// 			return a == b
-// 		},
-// 		"is": is{},
-// 	}
-
-// 	p, err := jsexpr.Compile(
-// 		"a == nil && equals(b, nil) && is.nil(c)",
-// 		jsexpr.Env(env),
-// 		jsexpr.Operator("==", "equals"),
-// 		jsexpr.AllowUndefinedVariables(),
-// 	)
-// 	require.NoError(t, err)
-
-// 	out, err := jsexpr.Run(p, env)
-// 	require.NoError(t, err)
-// 	require.Equal(t, true, out)
-// }
 
 func TestExpr_call_floatarg_func_with_int(t *testing.T) {
 	env := map[string]interface{}{
@@ -994,7 +886,7 @@ func TestExpr_call_floatarg_func_with_int(t *testing.T) {
 	} {
 		p, err := jsexpr.Compile(
 			fmt.Sprintf("cnv(%s)", each.input),
-			jsexpr.Env(env))
+			jsexpr.TypeCheck(env))
 		require.NoError(t, err)
 
 		out, err := jsexpr.Run(p, env)
@@ -1010,7 +902,7 @@ func TestConstExpr_error(t *testing.T) {
 
 	_, err := jsexpr.Compile(
 		`1 + divide(1, 0)`,
-		jsexpr.Env(env),
+		jsexpr.TypeCheck(env),
 		jsexpr.ConstExpr("divide"),
 	)
 	require.Error(t, err)
@@ -1024,7 +916,7 @@ func TestConstExpr_error_wrong_type(t *testing.T) {
 
 	_, err := jsexpr.Compile(
 		`1 + divide(1, 0)`,
-		jsexpr.Env(env),
+		jsexpr.TypeCheck(env),
 		jsexpr.ConstExpr("divide"),
 	)
 	require.Error(t, err)
@@ -1043,7 +935,7 @@ func TestConstExpr_error_no_env(t *testing.T) {
 func TestPatch(t *testing.T) {
 	program, err := jsexpr.Compile(
 		`ticket == "$100" and "$90" != ticket + "0"`,
-		jsexpr.Env(mockEnv{}),
+		jsexpr.TypeCheck(mockEnv{}),
 		jsexpr.Patch(&stringerPatcher{}),
 	)
 	require.NoError(t, err)
@@ -1059,7 +951,7 @@ func TestPatch(t *testing.T) {
 func TestPatch_length(t *testing.T) {
 	program, err := jsexpr.Compile(
 		`string.length == 5`,
-		jsexpr.Env(mockEnv{}),
+		jsexpr.TypeCheck(mockEnv{}),
 		jsexpr.Patch(&lengthPatcher{}),
 	)
 	require.NoError(t, err)
@@ -1127,10 +1019,10 @@ func TestIssue105(t *testing.T) {
 		c.b.field == 0
 	`
 
-	_, err := jsexpr.Compile(code, jsexpr.Env(Env{}))
+	_, err := jsexpr.Compile(code, jsexpr.TypeCheck(Env{}))
 	require.NoError(t, err)
 
-	_, err = jsexpr.Compile(`field == ''`, jsexpr.Env(Env{}))
+	_, err = jsexpr.Compile(`field == ''`, jsexpr.TypeCheck(Env{}))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "ambiguous identifier field")
 }
@@ -1149,11 +1041,11 @@ func TestIssue_nested_closures(t *testing.T) {
 func TestIssue138(t *testing.T) {
 	env := map[string]interface{}{}
 
-	_, err := jsexpr.Compile(`1 / (1 - 1)`, jsexpr.Env(env))
+	_, err := jsexpr.Compile(`1 / (1 - 1)`, jsexpr.TypeCheck(env))
 	require.Error(t, err)
 	require.Equal(t, "integer divide by zero (1:3)\n | 1 / (1 - 1)\n | ..^", err.Error())
 
-	_, err = jsexpr.Compile(`1 % 0`, jsexpr.Env(env))
+	_, err = jsexpr.Compile(`1 % 0`, jsexpr.TypeCheck(env))
 	require.Error(t, err)
 }
 
@@ -1378,7 +1270,7 @@ func Test_patcher1Index(t *testing.T) {
 
 	code := `list[-a]` // will output 3
 
-	program, err := jsexpr.Compile(code, jsexpr.Env(env), jsexpr.Patch(&patcher1{}))
+	program, err := jsexpr.Compile(code, jsexpr.TypeCheck(env), jsexpr.Patch(&patcher1{}))
 	if err != nil {
 		panic(err)
 	}
@@ -1623,28 +1515,6 @@ func TestBytepowerExpr(t *testing.T) {
 	}
 }
 
-func TestBytepowerExprCompileError(t *testing.T) {
-	type test struct {
-		input string
-		env   interface{}
-	}
-	tests := []test{
-		{
-			`pigat.player.level > 10`,
-			map[string]interface{}{
-				"pigat": mockPigat{},
-			},
-			// reason: from upon expression, player is not an accessible property of mockPigat{}, thus this is an error,
-			// correct case: pass in a nil as env, instead of map
-			// TODO: leverage the design in goja, this kind of abc.def.ghi could use json struct field to call references.
-		},
-	}
-	for _, test := range tests {
-		_, err := jsexpr.Compile(test.input, jsexpr.Env(test.env))
-		assert.Error(t, err)
-	}
-}
-
 type mockPigat struct{}
 
 func (mP mockPigat) FetchProperty(property string) interface{} {
@@ -1682,7 +1552,7 @@ func TestBytepowerExprRunError(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		prg, err := jsexpr.Compile(test.input, jsexpr.Env(nil))
+		prg, err := jsexpr.Compile(test.input, jsexpr.TypeCheck(nil))
 		assert.Nil(t, err)
 
 		_, err = jsexpr.Run(prg, test.env)
@@ -1795,7 +1665,7 @@ func TestOverflowedParams(t *testing.T) {
 	}
 	env.Sum = sum
 
-	prg, err := jsexpr.Compile(input, jsexpr.Env(env))
+	prg, err := jsexpr.Compile(input, jsexpr.TypeCheck(env))
 	assert.Nil(t, err)
 
 	out, err := jsexpr.Run(prg, env)

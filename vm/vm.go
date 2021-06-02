@@ -102,19 +102,11 @@ func (vm *VM) fetch(from interface{}, i interface{}) interface{} {
 					return value.Interface()
 				}
 			}
-			//  else {
-			// 	elem := reflect.TypeOf(from).Elem()
-			// 	return reflect.Zero(elem).Interface()
-			// }
 
 		case reflect.Struct:
 			if provider, ok := from.(PropertyProvider); ok {
 				return provider.FetchProperty(reflect.ValueOf(i).String())
 			}
-			// value := v.FieldByName(reflect.ValueOf(i).String())
-			// if value.IsValid() && value.CanInterface() {
-			// 	return value.Interface()
-			// }
 
 			structReflection := structReflectionFromTags(v)
 			if value, ok := structReflection[i.(string)]; ok && value.IsValid() && value.CanInterface() {
@@ -174,7 +166,41 @@ func (vm *VM) fetchFn(from interface{}, name string) reflect.Value {
 	panic(fmt.Sprintf(`cannot get "%v" from %T, also not found in vm's environment`, name, from))
 }
 
-func (vm *VM) callFunc(fn reflect.Value, input []reflect.Value, callVariadic bool) []reflect.Value {
+func (vm *VM) getFuncParamsFromStack(call Call) []reflect.Value {
+	in := make([]reflect.Value, call.Size)
+	for i := call.Size - 1; i >= 0; i-- {
+		param := vm.popThroughValueFetcher()
+		if param == nil && reflect.TypeOf(param) == nil {
+			// In case of nil value and nil type use this hack,
+			// otherwise reflect.Call will panic on zero value.
+			in[i] = reflect.ValueOf(&param).Elem()
+		} else {
+			in[i] = reflect.ValueOf(param)
+		}
+	}
+	return in
+}
+
+func (vm *VM) callFunc(f reflect.Value, call Call, in []reflect.Value) []reflect.Value {
+	fType := f.Type()
+	numIn := fType.NumIn()
+	var hasVariadic bool
+	if call.Size > numIn && fType.IsVariadic() {
+		input := utility.MakeVariadicFuncInput(fType.In(numIn-1).Elem().Kind(), in, numIn-1)
+		in[numIn-1] = input
+		hasVariadic = true
+	}
+	validParams := func() int {
+		if call.Size > numIn {
+			return numIn
+		} else {
+			return call.Size
+		}
+	}()
+	return vm.call(f, in[:validParams], hasVariadic)
+}
+
+func (vm *VM) call(fn reflect.Value, input []reflect.Value, callVariadic bool) []reflect.Value {
 	fType := fn.Type()
 
 	if !callVariadic {
@@ -401,38 +427,11 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			b := vm.constant()
 			vm.push(vm.fetch(a, b))
 
-		//TODO: let call.Size not being a restriction of how many arguments could a function accept,
-		// use reflect.Func.NumIn to trim enough arguments for calling the func instead
 		case OpCall:
 			call := vm.getCall()
-			in := make([]reflect.Value, call.Size)
-			for i := call.Size - 1; i >= 0; i-- {
-				param := vm.popThroughValueFetcher()
-				if param == nil && reflect.TypeOf(param) == nil {
-					// In case of nil value and nil type use this hack,
-					// otherwise reflect.Call will panic on zero value.
-					in[i] = reflect.ValueOf(&param).Elem()
-				} else {
-					in[i] = reflect.ValueOf(param)
-				}
-			}
+			in := vm.getFuncParamsFromStack(call)
 			f := vm.fetchFn(env, call.Name)
-			fType := f.Type()
-			numIn := fType.NumIn()
-			var hasVariadic bool
-			if call.Size > numIn && fType.IsVariadic() {
-				input := utility.MakeVariadicFuncInput(fType.In(numIn-1).Elem().Kind(), in, numIn-1)
-				in[numIn-1] = input
-				hasVariadic = true
-			}
-			validParams := func() int {
-				if call.Size > numIn {
-					return numIn
-				} else {
-					return call.Size
-				}
-			}()
-			out := vm.callFunc(f, in[:validParams], hasVariadic)
+			out := vm.callFunc(f, call, in)
 			vm.push(out[0].Interface())
 
 		case OpCallFast:
@@ -446,34 +445,9 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 
 		case OpMethod:
 			call := vm.getCall()
-			in := make([]reflect.Value, call.Size)
-			for i := call.Size - 1; i >= 0; i-- {
-				param := vm.popThroughValueFetcher()
-				if param == nil && reflect.TypeOf(param) == nil {
-					// In case of nil value and nil type use this hack,
-					// otherwise reflect.Call will panic on zero value.
-					in[i] = reflect.ValueOf(&param).Elem()
-				} else {
-					in[i] = reflect.ValueOf(param)
-				}
-			}
+			in := vm.getFuncParamsFromStack(call)
 			f := vm.fetchFn(vm.pop(), call.Name)
-			fType := f.Type()
-			numIn := fType.NumIn()
-			var hasVariadic bool
-			if call.Size > numIn && fType.IsVariadic() {
-				input := utility.MakeVariadicFuncInput(fType.In(numIn-1).Elem().Kind(), in, numIn-1)
-				in[numIn-1] = input
-				hasVariadic = true
-			}
-			validParams := func() int {
-				if call.Size > numIn {
-					return numIn
-				} else {
-					return call.Size
-				}
-			}()
-			out := vm.callFunc(f, in[:validParams], hasVariadic)
+			out := vm.callFunc(f, call, in)
 			vm.push(out[0].Interface())
 
 		case OpArray:

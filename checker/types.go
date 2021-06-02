@@ -225,6 +225,11 @@ func fieldType(ntype reflect.Type, name string) (reflect.Type, bool) {
 					}
 				}
 			}
+			if method, ok := ntype.MethodByName("FetchProperty"); ok {
+				// this field implemented PropertyProvider interface{}
+				return method.Type.Out(0), true
+			}
+
 		case reflect.Map:
 			return ntype.Elem(), true
 		}

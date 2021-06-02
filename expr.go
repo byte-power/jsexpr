@@ -42,12 +42,12 @@ func Eval(input string, env interface{}) (interface{}, error) {
 	return output, nil
 }
 
-// Env specifies expected input of env for type checks.
+// Typecheck specifies expected input of env for type checks.
 // If struct is passed, all fields will be treated as variables,
 // as well as all fields of embedded structs and struct itself.
 // If map is passed, all items will be treated as variables.
 // Methods defined on this type will be available as functions.
-func Env(env interface{}) Option {
+func TypeCheck(env interface{}) Option {
 	return func(c *conf.Config) {
 		if _, ok := env.(map[string]interface{}); ok {
 			c.MapEnv = true
