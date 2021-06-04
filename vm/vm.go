@@ -2,11 +2,9 @@ package vm
 
 import (
 	"fmt"
-	"math/rand"
 	"reflect"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/byte-power/jsexpr/builtin"
 	"github.com/byte-power/jsexpr/file"
@@ -23,23 +21,29 @@ func Run(program *Program, env interface{}) (interface{}, error) {
 	}
 
 	vm := VM{}
+	vm.Init(program, env)
 	return vm.Run(program, env)
 }
 
 type VM struct {
-	stack        []interface{}
-	constants    []interface{}
-	bytecode     []byte
-	ip           int
-	pp           int
-	scopes       []Scope
-	debug        bool
-	step         chan struct{}
-	curr         chan int
-	memory       int
-	limit        int
-	builtinFuncs map[string]builtin.JSFunc
+	stack     []interface{}
+	constants []interface{}
+	bytecode  []byte
+	ip        int
+	pp        int
+	scopes    []Scope
+	debug     bool
+	step      chan struct{}
+	curr      chan int
+	memory    int
+	limit     int
+
 	builtinObjs  map[string]interface{}
+	builtinFuncs map[string]builtin.JSFunc
+
+	structCallIndex int
+	structCallCache []string
+	envStructMap    map[string]fieldReflection
 }
 
 func Debug() *VM {
@@ -51,10 +55,39 @@ func Debug() *VM {
 	return vm
 }
 
-func (vm *VM) init(program *Program) {
+func (vm *VM) initEnv(env interface{}) {
+	if env == nil {
+		return
+	}
+
+	v := reflect.ValueOf(env)
+	kind := v.Kind()
+	if kind == reflect.Ptr && reflect.Indirect(v).Kind() == reflect.Struct {
+		v = reflect.Indirect(v)
+		kind = v.Kind()
+	}
+
+	if kind != reflect.Struct {
+		return
+	}
+
+	vm.structCallCache = make([]string, 1<<10)
+	vm.envStructMap = structReflection(v)
+}
+
+func (vm *VM) Init(program *Program, env interface{}) {
+	vm.reset(program)
+
 	vm.limit = MemoryBudget
+	vm.builtinFuncs = builtin.Funcs()
+	vm.builtinObjs = builtin.Objs()
+	vm.initEnv(env)
+}
+
+func (vm *VM) reset(program *Program) {
 	vm.ip = 0
 	vm.pp = 0
+	vm.memory = 0
 
 	if vm.stack == nil {
 		vm.stack = make([]interface{}, 0, 2)
@@ -68,11 +101,27 @@ func (vm *VM) init(program *Program) {
 
 	vm.bytecode = program.Bytecode
 	vm.constants = program.Constants
+	vm.structCallIndex = 0
+}
 
-	vm.builtinFuncs = builtin.Funcs()
-	vm.builtinObjs = builtin.Objs()
+func (vm *VM) getCurrentStructMap() map[string]fieldReflection {
+	calls := vm.structCallCache[:vm.structCallIndex]
+	current := vm.envStructMap
+	for _, fieldName := range calls {
+		current = current[fieldName].nestedFieldReflections
+	}
+	return current
+}
 
-	rand.Seed(time.Now().UnixNano())
+func (vm *VM) getFieldFromStruct(v reflect.Value, f string) (interface{}, bool) {
+	fType := v.Type()
+	for i := 0; i < fType.NumField(); i++ {
+		structField := fType.Field(i)
+		if structField.Name == f || structField.Tag.Get(utility.StructTagKey) == f {
+			return v.Field(i).Interface(), true
+		}
+	}
+	return nil, false
 }
 
 func (vm *VM) fetch(from interface{}, i interface{}) interface{} {
@@ -97,10 +146,8 @@ func (vm *VM) fetch(from interface{}, i interface{}) interface{} {
 
 		case reflect.Map:
 			value := v.MapIndex(reflect.ValueOf(i))
-			if value.IsValid() {
-				if value.CanInterface() {
-					return value.Interface()
-				}
+			if value.IsValid() && value.CanInterface() {
+				return value.Interface()
 			}
 
 		case reflect.Struct:
@@ -108,10 +155,15 @@ func (vm *VM) fetch(from interface{}, i interface{}) interface{} {
 				return provider.FetchProperty(reflect.ValueOf(i).String())
 			}
 
-			structReflection := structReflectionFromTags(v)
-			if value, ok := structReflection[i.(string)]; ok && value.IsValid() && value.CanInterface() {
-				return value.Interface()
+			m := vm.getCurrentStructMap()
+			if v, ok := m[i.(string)]; ok {
+				vm.structCallCache[vm.structCallIndex] = i.(string)
+				vm.structCallIndex++
+				return v.value.Interface()
+			}
 
+			if value, ok := vm.getFieldFromStruct(v, i.(string)); ok {
+				return value
 			}
 		}
 	}
@@ -230,7 +282,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 		}
 	}()
 
-	vm.init(program)
+	vm.reset(program)
 
 	for vm.ip < len(vm.bytecode) {
 
@@ -257,6 +309,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			vm.push(a)
 
 		case OpFetch:
+			vm.structCallIndex = 0
 			vm.push(vm.fetch(env, vm.constant()))
 
 		case OpFetchMap:

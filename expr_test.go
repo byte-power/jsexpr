@@ -68,18 +68,18 @@ func ExampleCompile() {
 
 func ExampleEnv() {
 	type Segment struct {
-		Origin string
+		Origin string `jsexpr:"origin"`
 	}
 	type Passengers struct {
-		Adults int
+		Adults int `jsexpr:"adults"`
 	}
 	type Meta struct {
-		Tags map[string]string
+		Tags map[string]string `jsexpr:"tags"`
 	}
 	type Env struct {
 		Meta
-		Segments   []*Segment
-		Passengers *Passengers
+		Segments   []*Segment  `jsexpr:"segments"`
+		Passengers *Passengers `jsexpr:"passengers"`
 		Marker     string
 	}
 
@@ -206,10 +206,10 @@ func ExampleOperator() {
 	`
 
 	type Env struct {
-		CreatedAt time.Time
-		Now       func() time.Time
-		Sub       func(a, b time.Time) time.Duration
-		After     func(a, b time.Time) bool
+		CreatedAt time.Time                          `jsexpr:"createdAt"`
+		Now       func() time.Time                   `jsexpr:"now"`
+		Sub       func(a, b time.Time) time.Duration `jsexpr:"sub"`
+		After     func(a, b time.Time) bool          `jsexpr:"after"`
 	}
 
 	options := []jsexpr.Option{
@@ -460,20 +460,24 @@ func TestExpr(t *testing.T) {
 		want interface{}
 	}{
 		{
-			`variadic("empty")`,
-			[]int{},
+			`map(filter(tweets, {len(.text) > 10}), {format(.date)})`,
+			[]interface{}{"23 Oct 17 18:30 UTC", "23 Oct 17 18:30 UTC"},
 		},
 		{
 			`ticket.string()`,
 			`$100`,
 		},
 		{
-			`ticket.priceDiv(25)`,
-			4,
-		},
-		{
 			`ticket.price`,
 			100,
+		},
+		{
+			`variadic("empty")`,
+			[]int{},
+		},
+		{
+			`ticket.priceDiv(25)`,
+			4,
 		},
 		{
 			`1`,
@@ -796,10 +800,6 @@ func TestExpr(t *testing.T) {
 			float64(0),
 		},
 		{
-			`map(filter(tweets, {len(.text) > 10}), {format(.date)})`,
-			[]interface{}{"23 Oct 17 18:30 UTC", "23 Oct 17 18:30 UTC"},
-		},
-		{
 			`concat("a", 1, [])`,
 			`a1[]`,
 		},
@@ -999,17 +999,17 @@ func TestEval_exposed_error(t *testing.T) {
 
 func TestIssue105(t *testing.T) {
 	type A struct {
-		Field string
+		Field string `jsexpr:"field"`
 	}
 	type B struct {
-		Field int
+		Field int `jsexpr:"field"`
 	}
 	type C struct {
-		A
-		B
+		A `jsexpr:"a"`
+		B `jsexpr:"b"`
 	}
 	type Env struct {
-		C
+		C `jsexpr:"c"`
 	}
 
 	code := `
@@ -1053,28 +1053,31 @@ func TestIssue138(t *testing.T) {
 // Mock types
 //
 type mockEnv struct {
-	Any                  interface{}
-	Int, One, Two, Three int
-	Int32                int32
-	Int64                int64
-	Uint64               uint64
-	Float64              float64
-	Bool                 bool
-	String               string
-	Array                []int
-	MultiDimArray        [][]int
-	Sum                  func(list []int) int
-	Inc                  func(int) int
-	Ticket               *ticket
-	Passengers           *passengers
-	Segments             []*segment
-	BirthDay             time.Time
-	Now                  time.Time
-	Nil                  interface{}
-	NilStruct            *time.Time
-	NilInt               *int
-	NilSlice             []ticket
-	Tweets               []tweet
+	Nil           interface{}
+	NilStruct     *time.Time           `jsexpr:"nilStruct"`
+	NilInt        *int                 `jsexpr:"nilInt"`
+	NilSlice      []ticket             `jsexpr:"nilSlice"`
+	Any           interface{}          `jsexpr:"any"`
+	Int           int                  `jsexpr:"int"`
+	One           int                  `jsexpr:"one"`
+	Two           int                  `jsexpr:"two"`
+	Three         int                  `jsexpr:"three"`
+	Int32         int32                `jsexpr:"int32"`
+	Int64         int64                `jsexpr:"int64"`
+	Uint64        uint64               `jsexpr:"uint64"`
+	Float64       float64              `jsexpr:"float64"`
+	Bool          bool                 `jsexpr:"bool"`
+	String        string               `jsexpr:"string"`
+	Array         []int                `jsexpr:"array"`
+	MultiDimArray [][]int              `jsexpr:"multiDimArray"`
+	Sum           func(list []int) int `jsexpr:"sum"`
+	Inc           func(int) int        `jsexpr:"inc"`
+	Ticket        *ticket              `jsexpr:"ticket"`
+	Passengers    *passengers          `jsexpr:"passengers"`
+	Segments      []*segment           `jsexpr:"segments"`
+	BirthDay      time.Time            `jsexpr:"birthDay"`
+	Now           time.Time            `jsexpr:"now"`
+	Tweets        []tweet              `jsexpr:"tweets"`
 }
 
 func (e *mockEnv) GetInt() int {
@@ -1151,7 +1154,7 @@ func (*mockEnv) Float(i interface{}) float64 {
 func (*mockEnv) Format(t time.Time) string { return t.Format(time.RFC822) }
 
 type ticket struct {
-	Price int
+	Price int `jsexpr:"price"`
 }
 
 func (t *ticket) PriceDiv(p int) int {
@@ -1163,20 +1166,20 @@ func (t *ticket) String() string {
 }
 
 type passengers struct {
-	Adults   uint32
-	Children uint32
-	Infants  uint32
+	Adults   uint32 `jsexpr:"adults"`
+	Children uint32 `jsexpr:"children"`
+	Infants  uint32 `jsexpr:"infants"`
 }
 
 type segment struct {
-	Origin      string
-	Destination string
-	Date        time.Time
+	Origin      string    `jsexpr:"origin"`
+	Destination string    `jsexpr:"destination"`
+	Date        time.Time `jsexpr:"date"`
 }
 
 type tweet struct {
-	Text string
-	Date time.Time
+	Text string    `jsexpr:"text"`
+	Date time.Time `jsexpr:"date"`
 }
 
 type mockMapStringStringEnv map[string]string
@@ -1284,6 +1287,49 @@ func Test_patcher1Index(t *testing.T) {
 }
 
 // bytepower new feature test suite added below
+
+func TestDeleteLater(t *testing.T) {
+	input := `a.b.c < d.e.f`
+	env := deleteLaterEnv{
+		a{
+			b{
+				C: 10,
+			},
+		},
+		d{
+			e{
+				F: 11,
+			},
+		},
+	}
+	prg, err := jsexpr.Compile(input, jsexpr.TypeCheck(env))
+	assert.Nil(t, err)
+
+	out, err := jsexpr.Run(prg, env)
+	assert.Nil(t, err)
+	assert.Equal(t, true, out)
+}
+
+type deleteLaterEnv struct {
+	A a `jsexpr:"a"`
+	D d `jsexpr:"d"`
+}
+
+type a struct {
+	B b `jsexpr:"b"`
+}
+
+type b struct {
+	C int `jsexpr:"c"`
+}
+
+type d struct {
+	E e `jsexpr:"e"`
+}
+
+type e struct {
+	F int `jsexpr:"f"`
+}
 
 func TestBytepowerExpr(t *testing.T) {
 	type test struct {
@@ -1603,7 +1649,7 @@ func (mP mockPlayer) FetchProperty(property string) interface{} {
 }
 
 type mockLevel struct {
-	Value int
+	Value int `jsexpr:"value"`
 }
 
 func (mL mockLevel) GetValue() interface{} {
@@ -1611,17 +1657,17 @@ func (mL mockLevel) GetValue() interface{} {
 }
 
 type player struct {
-	Level int
+	Level int `jsexpr:"level"`
 }
 
 type bpMockEnv struct {
-	Player player
-	Panda  panda
-	Koala  koala
+	Player player `jsexpr:"player"`
+	Panda  panda  `jsexpr:"panda"`
+	Koala  koala  `jsexpr:"koala"`
 }
 
 type panda struct {
-	Age int
+	Age int `jsexpr:"age"`
 }
 
 func (this panda) Howl() string {
@@ -1631,19 +1677,19 @@ func (this panda) Howl() string {
 type koala struct {
 	Age    int           `jsexpr:"Age"`
 	Howl   func() string `jsexpr:"HOWL"`
-	Origin string
+	Origin string        `jsexpr:"origin"`
 }
 
 type bpMockEnv2 struct {
-	Panda         panda  `jsexpr:"Panda"`
-	Date          dummy3 `jsexpr:"Date"`
-	RightTriangle triangle
+	Panda         panda    `jsexpr:"Panda"`
+	Date          dummy3   `jsexpr:"Date"`
+	RightTriangle triangle `jsexpr:"rightTriangle"`
 }
 
 type triangle struct {
-	Edge1 float64
-	Edge2 float64
-	Edge3 float64
+	Edge1 float64 `jsexpr:"edge1"`
+	Edge2 float64 `jsexpr:"edge2"`
+	Edge3 float64 `jsexpr:"edge3"`
 }
 
 type dummy3 struct {
@@ -1661,7 +1707,7 @@ func TestOverflowedParams(t *testing.T) {
 	}
 
 	var env struct {
-		Sum func(...int) int
+		Sum func(...int) int `jsexpr:"sum"`
 	}
 	env.Sum = sum
 

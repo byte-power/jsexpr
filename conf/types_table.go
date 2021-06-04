@@ -86,8 +86,11 @@ func FieldsFromStruct(t reflect.Type) TypesTable {
 					}
 				}
 			}
-			tag := utility.GetFieldTagName(f)
-			types[tag] = Tag{Type: f.Type}
+			fieldName := f.Name
+			if tag := f.Tag.Get(utility.StructTagKey); tag != "" {
+				fieldName = tag
+			}
+			types[fieldName] = Tag{Type: f.Type}
 		}
 	}
 

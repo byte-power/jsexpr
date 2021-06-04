@@ -10,6 +10,46 @@ import (
 	"github.com/byte-power/jsexpr/utility"
 )
 
+type fieldReflection struct {
+	value reflect.Value
+
+	nestedFieldReflections map[string]fieldReflection
+}
+
+func structReflection(root reflect.Value) map[string]fieldReflection {
+	m := make(map[string]fieldReflection)
+	t := root.Type()
+	for i := 0; i < root.NumField(); i++ {
+		fieldValue := root.Field(i)
+		field := t.Field(i)
+		fieldKind := fieldValue.Kind()
+		fieldRef := fieldReflection{
+			value: fieldValue,
+		}
+		if fieldKind == reflect.Ptr {
+			fieldKind = reflect.Indirect(fieldValue).Kind()
+			fieldValue = reflect.Indirect(fieldValue)
+		}
+		nested := make(map[string]fieldReflection)
+		if fieldKind == reflect.Struct {
+			if field.Anonymous {
+				for k, v := range structReflection(fieldValue) {
+					m[k] = v
+				}
+			} else {
+				nested = structReflection(fieldValue)
+			}
+		}
+		fieldRef.nestedFieldReflections = nested
+		fieldName := field.Name
+		if tag := field.Tag.Get(utility.StructTagKey); tag != "" {
+			fieldName = tag
+		}
+		m[fieldName] = fieldRef
+	}
+	return m
+}
+
 type Call struct {
 	Name string `msgpack:"name"`
 	Size int    `msgpack:"size"`
@@ -83,10 +123,6 @@ func fetch(from interface{}, i interface{}) interface{} {
 		if provider, ok := from.(PropertyProvider); ok {
 			return provider.FetchProperty(reflect.ValueOf(i).String())
 		}
-		// value := v.FieldByName(reflect.ValueOf(i).String())
-		// if value.IsValid() && value.CanInterface() {
-		// 	return value.Interface()
-		// }
 
 		structReflection := structReflectionFromTags(v)
 		if value, ok := structReflection[i.(string)]; ok && value.IsValid() && value.CanInterface() {
