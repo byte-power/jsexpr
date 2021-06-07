@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	. "github.com/byte-power/jsexpr/ast"
+	jsBuiltin "github.com/byte-power/jsexpr/builtin"
 	"github.com/byte-power/jsexpr/file"
 	. "github.com/byte-power/jsexpr/parser/lexer"
 )
@@ -70,10 +71,6 @@ var builtins = map[string]builtin{
 	"filter": {2},
 	"map":    {2},
 	"count":  {2},
-}
-
-var jsBuiltins = map[string]struct{}{
-	"parseInt": struct{}{},
 }
 
 type parser struct {
@@ -342,7 +339,7 @@ func (p *parser) parseIdentifierExpression(token Token) Node {
 	var node Node
 	if p.current.Is(Bracket, "(") {
 		var arguments []Node
-		if _, ok := jsBuiltins[token.Value]; ok {
+		if _, ok := jsBuiltin.Funcs()[token.Value]; ok {
 			arguments = p.parseArguments()
 			node = &BuiltinNode{
 				Name:      token.Value,

@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	"github.com/byte-power/jsexpr/ast"
+	"github.com/byte-power/jsexpr/builtin"
 	"github.com/byte-power/jsexpr/conf"
 	"github.com/byte-power/jsexpr/file"
 	"github.com/byte-power/jsexpr/parser"
@@ -446,10 +447,6 @@ func (c *compiler) FunctionNode(node *ast.FunctionNode) {
 
 func (c *compiler) BuiltinNode(node *ast.BuiltinNode) {
 	switch node.Name {
-	case "parseInt":
-		//TODO: add parseInt opcodes
-		c.compile(node.Arguments[0])
-
 	case "len":
 		c.compile(node.Arguments[0])
 		c.emit(OpLen)
@@ -559,7 +556,13 @@ func (c *compiler) BuiltinNode(node *ast.BuiltinNode) {
 		c.emit(OpEnd)
 
 	default:
-		panic(fmt.Sprintf("unknown builtin %v", node.Name))
+		if _, ok := builtin.Funcs()[node.Name]; !ok {
+			panic(fmt.Sprintf("unknown builtin %v", node.Name))
+		}
+		for _, arg := range node.Arguments {
+			c.compile(arg)
+		}
+		c.emit(OpCall, c.makeConstant(Call{Name: node.Name, Size: len(node.Arguments)})...)
 	}
 }
 
