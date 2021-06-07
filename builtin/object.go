@@ -9,7 +9,7 @@ import (
 
 var objects = map[string]interface{}{
 	"Date": dateObject{
-		Now: time.Now().Unix,
+		Now: now,
 	},
 	"Math": mathObject{
 		E:       E,
@@ -182,4 +182,8 @@ func jsMin(nums ...float64) float64 {
 		}
 	}
 	return pivot
+}
+
+func now() int64 {
+	return time.Now().Unix()
 }

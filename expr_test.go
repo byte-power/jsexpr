@@ -460,6 +460,10 @@ func TestExpr(t *testing.T) {
 		want interface{}
 	}{
 		{
+			`sum(array)`,
+			15,
+		},
+		{
 			`map(filter(tweets, {len(.text) > 10}), {format(.date)})`,
 			[]interface{}{"23 Oct 17 18:30 UTC", "23 Oct 17 18:30 UTC"},
 		},
@@ -710,10 +714,6 @@ func TestExpr(t *testing.T) {
 		{
 			`array[0]`,
 			1,
-		},
-		{
-			`sum(array)`,
-			15,
 		},
 		{
 			`array[0] < array[1]`,
@@ -1347,6 +1347,15 @@ func TestBytepowerExpr(t *testing.T) {
 
 	tests := []test{
 		{
+			`Date.now() == "test"`,
+			true,
+			bpMockEnv2{
+				Date: dummy3{
+					Now: func() string { return "test" },
+				},
+			},
+		},
+		{
 			`Math.pow(2,3,4,5)`,
 			float64(8),
 			nil,
@@ -1370,15 +1379,6 @@ func TestBytepowerExpr(t *testing.T) {
 			`Math.E < 3`,
 			true,
 			nil,
-		},
-		{
-			`Date.now() == "test"`,
-			true,
-			bpMockEnv2{
-				Date: dummy3{
-					Now: func() string { return "test" },
-				},
-			},
 		},
 		{
 			`Date.now() > 0`,
@@ -1693,7 +1693,7 @@ type triangle struct {
 }
 
 type dummy3 struct {
-	Now func() string
+	Now func() string `jsexpr:"now"`
 }
 
 func TestOverflowedParams(t *testing.T) {

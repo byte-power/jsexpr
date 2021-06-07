@@ -17,7 +17,6 @@ func Benchmark_simpleExpr(b *testing.B) {
 	}
 
 	var out interface{}
-
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		out, err = vm.Run(program, nil)
@@ -499,32 +498,32 @@ type Tweet struct {
 
 func (Env) Format(t time.Time) string { return t.Format(time.RFC822) }
 
-func BenchmarkCompileWithoutEnv(b *testing.B) {
-	code := `map(filter(tweets, {len(.text) > 0}), {.text + format(.date)})`
-	env := Env{
-		Tweets: []Tweet{{"Oh My God!", time.Now()}, {"How you doin?", time.Now()}, {"Could I be wearing any more clothes?", time.Now()}},
-	}
+// func BenchmarkCompileWithoutEnv(b *testing.B) {
+// 	code := `map(filter(tweets, {len(.text) > 0}), {.text + format(.date)})`
+// 	env := Env{
+// 		Tweets: []Tweet{{"Oh My God!", time.Now()}, {"How you doin?", time.Now()}, {"Could I be wearing any more clothes?", time.Now()}},
+// 	}
 
-	program, _ := jsexpr.Compile(code)
+// 	program, _ := jsexpr.Compile(code)
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = jsexpr.Run(program, env)
-	}
-	b.StopTimer()
-}
+// 	b.ResetTimer()
+// 	for i := 0; i < b.N; i++ {
+// 		_, _ = jsexpr.Run(program, env)
+// 	}
+// 	b.StopTimer()
+// }
 
-func BenchmarkCompileWithEnv(b *testing.B) {
-	code := `map(filter(tweets, {len(.text) > 0}), {.text + format(.date)})`
-	env := Env{
-		Tweets: []Tweet{{"Oh My God!", time.Now()}, {"How you doin?", time.Now()}, {"Could I be wearing any more clothes?", time.Now()}},
-	}
+// func BenchmarkCompileWithEnv(b *testing.B) {
+// 	code := `map(filter(tweets, {len(.text) > 0}), {.text + format(.date)})`
+// 	env := Env{
+// 		Tweets: []Tweet{{"Oh My God!", time.Now()}, {"How you doin?", time.Now()}, {"Could I be wearing any more clothes?", time.Now()}},
+// 	}
 
-	program, _ := jsexpr.Compile(code, jsexpr.TypeCheck(Env{}))
+// 	program, _ := jsexpr.Compile(code, jsexpr.TypeCheck(Env{}))
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _ = jsexpr.Run(program, env)
-	}
-	b.StopTimer()
-}
+// 	b.ResetTimer()
+// 	for i := 0; i < b.N; i++ {
+// 		_, _ = jsexpr.Run(program, env)
+// 	}
+// 	b.StopTimer()
+// }

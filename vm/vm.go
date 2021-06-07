@@ -106,6 +106,7 @@ func (vm *VM) reset(program *Program) {
 
 func (vm *VM) getCurrentStructMap() map[string]fieldReflection {
 	calls := vm.structCallCache[:vm.structCallIndex]
+	// first lookup from injected env using current cached calls
 	current := vm.envStructMap
 	for _, fieldName := range calls {
 		current = current[fieldName].nestedFieldReflections
@@ -177,7 +178,7 @@ func (vm *VM) fetch(from interface{}, i interface{}) interface{} {
 	panic(fmt.Sprintf("cannot fetch %v from %T", i, from))
 }
 
-func (vm *VM) fetchFn(from interface{}, name string) reflect.Value {
+func (vm *VM) fetchFn(from interface{}, name string, envCall bool) reflect.Value {
 	if from != nil {
 		v := reflect.ValueOf(from)
 		t := reflect.TypeOf(from)
@@ -200,16 +201,19 @@ func (vm *VM) fetchFn(from interface{}, name string) reflect.Value {
 				return value.Elem()
 			}
 		case reflect.Struct:
-			structReflection := structReflectionFromTags(d)
-			if value, ok := structReflection[name]; ok {
-				return value
+			t = d.Type()
+			for i := 0; i < t.NumField(); i++ {
+				if tag := t.Field(i).Tag.Get(utility.StructTagKey); tag == name {
+					return d.Field(i)
+				}
 			}
 		}
 	}
 
 	// no luck from passed-in env, so fetch from vm's env
-	vmFuncs := reflect.ValueOf(vm.builtinFuncs)
-	value := vmFuncs.MapIndex(reflect.ValueOf(name))
+	// vmFuncs := reflect.ValueOf(vm.builtinFuncs)
+	// value := vmFuncs.MapIndex(reflect.ValueOf(name))
+	value := reflect.ValueOf(vm.builtinFuncs[name])
 	if value.IsValid() && value.CanInterface() {
 		return value
 	}
@@ -483,7 +487,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 		case OpCall:
 			call := vm.getCall()
 			in := vm.getFuncParamsFromStack(call)
-			f := vm.fetchFn(env, call.Name)
+			f := vm.fetchFn(env, call.Name, true)
 			out := vm.callFunc(f, call, in)
 			vm.push(out[0].Interface())
 
@@ -493,13 +497,13 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			for i := call.Size - 1; i >= 0; i-- {
 				in[i] = vm.popThroughValueFetcher()
 			}
-			fn := vm.fetchFn(env, call.Name).Interface()
+			fn := vm.fetchFn(env, call.Name, true).Interface()
 			vm.push(fn.(func(...interface{}) interface{})(in...))
 
 		case OpMethod:
 			call := vm.getCall()
 			in := vm.getFuncParamsFromStack(call)
-			f := vm.fetchFn(vm.pop(), call.Name)
+			f := vm.fetchFn(vm.pop(), call.Name, false)
 			out := vm.callFunc(f, call, in)
 			vm.push(out[0].Interface())
 
