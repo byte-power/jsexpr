@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/byte-power/jsexpr/ast"
+	"github.com/byte-power/jsexpr/utility"
 )
 
 var (
@@ -209,7 +210,8 @@ func fieldType(ntype reflect.Type, name string) (reflect.Type, bool) {
 			// First check all struct's fields.
 			for i := 0; i < ntype.NumField(); i++ {
 				f := ntype.Field(i)
-				if f.Name == name {
+				tagName := utility.GetFieldTagName(f)
+				if tagName == name {
 					return f.Type, true
 				}
 			}
@@ -223,6 +225,11 @@ func fieldType(ntype reflect.Type, name string) (reflect.Type, bool) {
 					}
 				}
 			}
+			if method, ok := ntype.MethodByName("FetchProperty"); ok {
+				// this field implemented PropertyProvider interface{}
+				return method.Type.Out(0), true
+			}
+
 		case reflect.Map:
 			return ntype.Elem(), true
 		}
@@ -244,6 +251,14 @@ func methodType(t reflect.Type, name string) (reflect.Type, bool, bool) {
 			} else {
 				return m.Type, true, true
 			}
+		}
+
+		for i := 0; i < t.NumMethod(); i++ {
+			method := t.Method(i)
+			if utility.StrToLowerCamel(method.Name) != name {
+				continue
+			}
+			return method.Type, t.Kind() != reflect.Interface, true
 		}
 
 		d := t

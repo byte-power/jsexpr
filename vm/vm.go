@@ -8,6 +8,7 @@ import (
 
 	"github.com/byte-power/jsexpr/builtin"
 	"github.com/byte-power/jsexpr/file"
+	"github.com/byte-power/jsexpr/utility"
 )
 
 var (
@@ -20,22 +21,29 @@ func Run(program *Program, env interface{}) (interface{}, error) {
 	}
 
 	vm := VM{}
+	vm.Init(program, env)
 	return vm.Run(program, env)
 }
 
 type VM struct {
-	stack        []interface{}
-	constants    []interface{}
-	bytecode     []byte
-	ip           int
-	pp           int
-	scopes       []Scope
-	debug        bool
-	step         chan struct{}
-	curr         chan int
-	memory       int
-	limit        int
+	stack     []interface{}
+	constants []interface{}
+	bytecode  []byte
+	ip        int
+	pp        int
+	scopes    []Scope
+	debug     bool
+	step      chan struct{}
+	curr      chan int
+	memory    int
+	limit     int
+
+	builtinObjs  map[string]interface{}
 	builtinFuncs map[string]builtin.JSFunc
+
+	structCallIndex int
+	structCallCache []string
+	envStructMap    map[string]fieldReflection
 }
 
 func Debug() *VM {
@@ -47,10 +55,39 @@ func Debug() *VM {
 	return vm
 }
 
-func (vm *VM) init(program *Program) {
+func (vm *VM) initEnv(env interface{}) {
+	if env == nil {
+		return
+	}
+
+	v := reflect.ValueOf(env)
+	kind := v.Kind()
+	if kind == reflect.Ptr && reflect.Indirect(v).Kind() == reflect.Struct {
+		v = reflect.Indirect(v)
+		kind = v.Kind()
+	}
+
+	if kind != reflect.Struct {
+		return
+	}
+
+	vm.structCallCache = make([]string, 1<<10)
+	vm.envStructMap = structReflection(v)
+}
+
+func (vm *VM) Init(program *Program, env interface{}) {
+	vm.reset(program)
+
 	vm.limit = MemoryBudget
+	vm.builtinFuncs = builtin.Funcs()
+	vm.builtinObjs = builtin.Objs()
+	vm.initEnv(env)
+}
+
+func (vm *VM) reset(program *Program) {
 	vm.ip = 0
 	vm.pp = 0
+	vm.memory = 0
 
 	if vm.stack == nil {
 		vm.stack = make([]interface{}, 0, 2)
@@ -64,18 +101,91 @@ func (vm *VM) init(program *Program) {
 
 	vm.bytecode = program.Bytecode
 	vm.constants = program.Constants
-
-	vm.builtinFuncs = builtin.Funcs()
+	vm.structCallIndex = 0
 }
 
-func (vm *VM) fetchFn(from interface{}, name string) reflect.Value {
+func (vm *VM) getCurrentStructMap() map[string]fieldReflection {
+	calls := vm.structCallCache[:vm.structCallIndex]
+	// first lookup from injected env using current cached calls
+	current := vm.envStructMap
+	for _, fieldName := range calls {
+		current = current[fieldName].nestedFieldReflections
+	}
+	return current
+}
+
+func (vm *VM) getFieldFromStruct(v reflect.Value, f string) (interface{}, bool) {
+	fType := v.Type()
+	for i := 0; i < fType.NumField(); i++ {
+		structField := fType.Field(i)
+		if structField.Name == f || structField.Tag.Get(utility.StructTagKey) == f {
+			return v.Field(i).Interface(), true
+		}
+	}
+	return nil, false
+}
+
+func (vm *VM) fetch(from interface{}, i interface{}) interface{} {
 	if from != nil {
 		v := reflect.ValueOf(from)
+		kind := v.Kind()
 
-		if v.NumMethod() > 0 {
-			method := v.MethodByName(name)
-			if method.IsValid() {
-				return method
+		// Structures can be access through a pointer or through a value, when they
+		// are accessed through a pointer we don't want to copy them to a value.
+		if kind == reflect.Ptr && reflect.Indirect(v).Kind() == reflect.Struct {
+			v = reflect.Indirect(v)
+			kind = v.Kind()
+		}
+
+		switch kind {
+
+		case reflect.Array, reflect.Slice, reflect.String:
+			value := v.Index(toInt(i))
+			if value.IsValid() && value.CanInterface() {
+				return value.Interface()
+			}
+
+		case reflect.Map:
+			value := v.MapIndex(reflect.ValueOf(i))
+			if value.IsValid() && value.CanInterface() {
+				return value.Interface()
+			}
+
+		case reflect.Struct:
+			if provider, ok := from.(PropertyProvider); ok {
+				return provider.FetchProperty(reflect.ValueOf(i).String())
+			}
+
+			m := vm.getCurrentStructMap()
+			if v, ok := m[i.(string)]; ok {
+				vm.structCallCache[vm.structCallIndex] = i.(string)
+				vm.structCallIndex++
+				return v.value.Interface()
+			}
+
+			if value, ok := vm.getFieldFromStruct(v, i.(string)); ok {
+				return value
+			}
+		}
+	}
+
+	// not found in passed-in env, so fetch from vm's env
+	if value, ok := vm.builtinObjs[i.(string)]; ok {
+		return value
+	}
+
+	// still not found
+	panic(fmt.Sprintf("cannot fetch %v from %T", i, from))
+}
+
+func (vm *VM) fetchFn(from interface{}, name string, envCall bool) reflect.Value {
+	if from != nil {
+		v := reflect.ValueOf(from)
+		t := reflect.TypeOf(from)
+		for i := 0; i < v.NumMethod(); i++ {
+			methodSig := t.Method(i)
+			if utility.StrToLowerCamel(methodSig.Name) == name {
+				return v.Method(i)
 			}
 		}
 
@@ -91,23 +201,78 @@ func (vm *VM) fetchFn(from interface{}, name string) reflect.Value {
 				return value.Elem()
 			}
 		case reflect.Struct:
-			value := d.FieldByName(name)
-			if value.IsValid() {
-				return value
+			t = d.Type()
+			for i := 0; i < t.NumField(); i++ {
+				if tag := t.Field(i).Tag.Get(utility.StructTagKey); tag == name {
+					return d.Field(i)
+				}
 			}
 		}
 	}
 
 	// no luck from passed-in env, so fetch from vm's env
-
-	vmFuncs := reflect.ValueOf(vm.builtinFuncs)
-	value := vmFuncs.MapIndex(reflect.ValueOf(name))
+	// vmFuncs := reflect.ValueOf(vm.builtinFuncs)
+	// value := vmFuncs.MapIndex(reflect.ValueOf(name))
+	value := reflect.ValueOf(vm.builtinFuncs[name])
 	if value.IsValid() && value.CanInterface() {
 		return value
 	}
 
 	// also not in vm env, so panic
 	panic(fmt.Sprintf(`cannot get "%v" from %T, also not found in vm's environment`, name, from))
+}
+
+func (vm *VM) getFuncParamsFromStack(call Call) []reflect.Value {
+	in := make([]reflect.Value, call.Size)
+	for i := call.Size - 1; i >= 0; i-- {
+		param := vm.popThroughValueFetcher()
+		if param == nil && reflect.TypeOf(param) == nil {
+			// In case of nil value and nil type use this hack,
+			// otherwise reflect.Call will panic on zero value.
+			in[i] = reflect.ValueOf(&param).Elem()
+		} else {
+			in[i] = reflect.ValueOf(param)
+		}
+	}
+	return in
+}
+
+func (vm *VM) callFunc(f reflect.Value, call Call, in []reflect.Value) []reflect.Value {
+	fType := f.Type()
+	numIn := fType.NumIn()
+	var hasVariadic bool
+	if call.Size > numIn && fType.IsVariadic() {
+		input := utility.MakeVariadicFuncInput(fType.In(numIn-1).Elem().Kind(), in, numIn-1)
+		in[numIn-1] = input
+		hasVariadic = true
+	}
+	validParams := func() int {
+		if call.Size > numIn {
+			return numIn
+		} else {
+			return call.Size
+		}
+	}()
+	return vm.call(f, in[:validParams], hasVariadic)
+}
+
+func (vm *VM) call(fn reflect.Value, input []reflect.Value, callVariadic bool) []reflect.Value {
+	fType := fn.Type()
+
+	if !callVariadic {
+		castedInput := make([]reflect.Value, len(input))
+		for i := 0; i < len(input); i++ {
+			castedInput[i] = utility.ReflectCast(fType.In(i).Kind(), input[i])
+		}
+		return fn.Call(castedInput)
+	} else {
+		castedInput := make([]reflect.Value, fType.NumIn())
+		for i := 0; i < fType.NumIn(); i++ {
+			castedInput[i] = utility.ReflectCast(fType.In(i).Kind(), input[i])
+		}
+		return fn.CallSlice(castedInput)
+	}
+
 }
 
 func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error) {
@@ -121,7 +286,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 		}
 	}()
 
-	vm.init(program)
+	vm.reset(program)
 
 	for vm.ip < len(vm.bytecode) {
 
@@ -148,7 +313,8 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 			vm.push(a)
 
 		case OpFetch:
-			vm.push(fetch(env, vm.constant()))
+			vm.structCallIndex = 0
+			vm.push(vm.fetch(env, vm.constant()))
 
 		case OpFetchMap:
 			vm.push(env.(map[string]interface{})[vm.constant().(string)])
@@ -305,7 +471,7 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 		case OpIndex:
 			b := vm.popThroughValueFetcher()
 			a := vm.popThroughValueFetcher()
-			vm.push(fetch(a, b))
+			vm.push(vm.fetch(a, b))
 
 		case OpSlice:
 			from := vm.popThroughValueFetcher()
@@ -316,51 +482,29 @@ func (vm *VM) Run(program *Program, env interface{}) (out interface{}, err error
 		case OpProperty:
 			a := vm.pop()
 			b := vm.constant()
-			vm.push(fetch(a, b))
+			vm.push(vm.fetch(a, b))
 
 		case OpCall:
-			// call := vm.constant().(Call)
 			call := vm.getCall()
-			in := make([]reflect.Value, call.Size)
-			for i := call.Size - 1; i >= 0; i-- {
-				param := vm.popThroughValueFetcher()
-				if param == nil && reflect.TypeOf(param) == nil {
-					// In case of nil value and nil type use this hack,
-					// otherwise reflect.Call will panic on zero value.
-					in[i] = reflect.ValueOf(&param).Elem()
-				} else {
-					in[i] = reflect.ValueOf(param)
-				}
-			}
-			//out := FetchFn(env, call.Name).Call(in)
-			out := vm.fetchFn(env, call.Name).Call(in)
+			in := vm.getFuncParamsFromStack(call)
+			f := vm.fetchFn(env, call.Name, true)
+			out := vm.callFunc(f, call, in)
 			vm.push(out[0].Interface())
 
 		case OpCallFast:
-			// call := vm.constant().(Call)
 			call := vm.getCall()
 			in := make([]interface{}, call.Size)
 			for i := call.Size - 1; i >= 0; i-- {
 				in[i] = vm.popThroughValueFetcher()
 			}
-			fn := FetchFn(env, call.Name).Interface()
+			fn := vm.fetchFn(env, call.Name, true).Interface()
 			vm.push(fn.(func(...interface{}) interface{})(in...))
 
 		case OpMethod:
-			// call := vm.constants[vm.arg()].(Call)
 			call := vm.getCall()
-			in := make([]reflect.Value, call.Size)
-			for i := call.Size - 1; i >= 0; i-- {
-				param := vm.popThroughValueFetcher()
-				if param == nil && reflect.TypeOf(param) == nil {
-					// In case of nil value and nil type use this hack,
-					// otherwise reflect.Call will panic on zero value.
-					in[i] = reflect.ValueOf(&param).Elem()
-				} else {
-					in[i] = reflect.ValueOf(param)
-				}
-			}
-			out := FetchFn(vm.pop(), call.Name).Call(in)
+			in := vm.getFuncParamsFromStack(call)
+			f := vm.fetchFn(vm.pop(), call.Name, false)
+			out := vm.callFunc(f, call, in)
 			vm.push(out[0].Interface())
 
 		case OpArray:

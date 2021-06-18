@@ -3,6 +3,7 @@ package jsexpr_test
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -48,7 +49,7 @@ func ExampleCompile() {
 		"bar": 99,
 	}
 
-	program, err := jsexpr.Compile("foo in 1..99 and bar in 1..99", jsexpr.Env(env))
+	program, err := jsexpr.Compile("foo in 1..99 and bar in 1..99", jsexpr.TypeCheck(env))
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -67,24 +68,24 @@ func ExampleCompile() {
 
 func ExampleEnv() {
 	type Segment struct {
-		Origin string
+		Origin string `jsexpr:"origin"`
 	}
 	type Passengers struct {
-		Adults int
+		Adults int `jsexpr:"adults"`
 	}
 	type Meta struct {
-		Tags map[string]string
+		Tags map[string]string `jsexpr:"tags"`
 	}
 	type Env struct {
 		Meta
-		Segments   []*Segment
-		Passengers *Passengers
+		Segments   []*Segment  `jsexpr:"segments"`
+		Passengers *Passengers `jsexpr:"passengers"`
 		Marker     string
 	}
 
-	code := `all(Segments, {.Origin == "MOW"}) && Passengers.Adults > 0 && Tags["foo"] startsWith "bar"`
+	code := `all(segments, {.origin == "MOW"}) && passengers.adults > 0 && tags["foo"] startsWith "bar"`
 
-	program, err := jsexpr.Compile(code, jsexpr.Env(Env{}))
+	program, err := jsexpr.Compile(code, jsexpr.TypeCheck(Env{}))
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -121,7 +122,7 @@ func ExampleAsBool() {
 		"foo": 0,
 	}
 
-	program, err := jsexpr.Compile("foo >= 0", jsexpr.Env(env), jsexpr.AsBool())
+	program, err := jsexpr.Compile("foo >= 0", jsexpr.TypeCheck(env), jsexpr.AsBool())
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -143,7 +144,7 @@ func ExampleAsBool_error() {
 		"foo": 0,
 	}
 
-	_, err := jsexpr.Compile("foo + 42", jsexpr.Env(env), jsexpr.AsBool())
+	_, err := jsexpr.Compile("foo + 42", jsexpr.TypeCheck(env), jsexpr.AsBool())
 
 	fmt.Printf("%v", err)
 
@@ -181,7 +182,7 @@ func ExampleAsInt64() {
 		"rating": 5.5,
 	}
 
-	program, err := jsexpr.Compile("rating", jsexpr.Env(env), jsexpr.AsInt64())
+	program, err := jsexpr.Compile("rating", jsexpr.TypeCheck(env), jsexpr.AsInt64())
 	if err != nil {
 		fmt.Printf("%v", err)
 		return
@@ -200,21 +201,21 @@ func ExampleAsInt64() {
 
 func ExampleOperator() {
 	code := `
-		Now() > CreatedAt &&
-		(Now() - CreatedAt).Hours() > 24
+		now() > createdAt &&
+		(now() - createdAt).hours() > 24
 	`
 
 	type Env struct {
-		CreatedAt time.Time
-		Now       func() time.Time
-		Sub       func(a, b time.Time) time.Duration
-		After     func(a, b time.Time) bool
+		CreatedAt time.Time                          `jsexpr:"createdAt"`
+		Now       func() time.Time                   `jsexpr:"now"`
+		Sub       func(a, b time.Time) time.Duration `jsexpr:"sub"`
+		After     func(a, b time.Time) bool          `jsexpr:"after"`
 	}
 
 	options := []jsexpr.Option{
-		jsexpr.Env(Env{}),
-		jsexpr.Operator(">", "After"),
-		jsexpr.Operator("-", "Sub"),
+		jsexpr.TypeCheck(Env{}),
+		jsexpr.Operator(">", "after"),
+		jsexpr.Operator("-", "sub"),
 	}
 
 	program, err := jsexpr.Compile(code, options...)
@@ -257,7 +258,7 @@ func ExampleConstExpr() {
 	}
 
 	options := []jsexpr.Option{
-		jsexpr.Env(env),
+		jsexpr.TypeCheck(env),
 		jsexpr.ConstExpr("fib"), // Mark fib func as constant expression.
 	}
 
@@ -289,7 +290,7 @@ func ExampleAllowUndefinedVariables() {
 	}
 
 	options := []jsexpr.Option{
-		jsexpr.Env(env),
+		jsexpr.TypeCheck(env),
 		jsexpr.AllowUndefinedVariables(), // Allow to use undefined variables.
 	}
 
@@ -317,66 +318,6 @@ func ExampleAllowUndefinedVariables() {
 
 	// Output: Hello, world!
 	// Hello, you!
-}
-
-func ExampleAllowUndefinedVariables_zero_value() {
-	code := `name == "" ? foo + bar : foo + name`
-
-	// If environment has different zero values, then undefined variables
-	// will have it as default value.
-	env := map[string]string{}
-
-	options := []jsexpr.Option{
-		jsexpr.Env(env),
-		jsexpr.AllowUndefinedVariables(), // Allow to use undefined variables.
-	}
-
-	program, err := jsexpr.Compile(code, options...)
-	if err != nil {
-		fmt.Printf("%v", err)
-		return
-	}
-
-	env = map[string]string{
-		"foo": "Hello, ",
-		"bar": "world!",
-	}
-
-	output, err := jsexpr.Run(program, env)
-	if err != nil {
-		fmt.Printf("%v", err)
-		return
-	}
-	fmt.Printf("%v", output)
-
-	// Output: Hello, world!
-}
-
-func ExampleAllowUndefinedVariables_zero_value_functions() {
-	code := `words == "" ? Split("foo,bar", ",") : Split(words, ",")`
-
-	// Env is map[string]string type on which methods are defined.
-	env := mockMapStringStringEnv{}
-
-	options := []jsexpr.Option{
-		jsexpr.Env(env),
-		jsexpr.AllowUndefinedVariables(), // Allow to use undefined variables.
-	}
-
-	program, err := jsexpr.Compile(code, options...)
-	if err != nil {
-		fmt.Printf("%v", err)
-		return
-	}
-
-	output, err := jsexpr.Run(program, env)
-	if err != nil {
-		fmt.Printf("%v", err)
-		return
-	}
-	fmt.Printf("%v", output)
-
-	// Output: [foo bar]
 }
 
 func ExamplePatch() {
@@ -426,9 +367,9 @@ func TestOperator_struct(t *testing.T) {
 		BirthDay: time.Date(2017, time.October, 23, 18, 30, 0, 0, time.UTC),
 	}
 
-	code := `BirthDay == "2017-10-23"`
+	code := `birthDay == "2017-10-23"`
 
-	program, err := jsexpr.Compile(code, jsexpr.Env(&mockEnv{}), jsexpr.Operator("==", "DateEqual"))
+	program, err := jsexpr.Compile(code, jsexpr.TypeCheck(&mockEnv{}), jsexpr.Operator("==", "dateEqual"))
 	require.NoError(t, err)
 
 	output, err := jsexpr.Run(program, env)
@@ -441,13 +382,13 @@ func TestOperator_interface(t *testing.T) {
 		Ticket: &ticket{Price: 100},
 	}
 
-	code := `Ticket == "$100" && "$100" == Ticket && Now != Ticket && Now == Now`
+	code := `ticket == "$100" && "$100" == ticket && now != ticket && now == now`
 
 	program, err := jsexpr.Compile(
 		code,
-		jsexpr.Env(&mockEnv{}),
-		jsexpr.Operator("==", "StringerStringEqual", "StringStringerEqual", "StringerStringerEqual"),
-		jsexpr.Operator("!=", "NotStringerStringEqual", "NotStringStringerEqual", "NotStringerStringerEqual"),
+		jsexpr.TypeCheck(&mockEnv{}),
+		jsexpr.Operator("==", "stringerStringEqual", "stringStringerEqual", "stringerStringerEqual"),
+		jsexpr.Operator("!=", "notStringerStringEqual", "notStringStringerEqual", "notStringerStringerEqual"),
 	)
 	require.NoError(t, err)
 
@@ -465,7 +406,7 @@ func TestExpr_readme_example(t *testing.T) {
 
 	code := `sprintf(greet, names[0])`
 
-	program, err := jsexpr.Compile(code, jsexpr.Env(env))
+	program, err := jsexpr.Compile(code, jsexpr.TypeCheck(env))
 	require.NoError(t, err)
 
 	output, err := jsexpr.Run(program, env)
@@ -519,6 +460,30 @@ func TestExpr(t *testing.T) {
 		want interface{}
 	}{
 		{
+			`sum(array)`,
+			15,
+		},
+		{
+			`map(filter(tweets, {len(.text) > 10}), {format(.date)})`,
+			[]interface{}{"23 Oct 17 18:30 UTC", "23 Oct 17 18:30 UTC"},
+		},
+		{
+			`ticket.string()`,
+			`$100`,
+		},
+		{
+			`ticket.price`,
+			100,
+		},
+		{
+			`variadic("empty")`,
+			[]int{},
+		},
+		{
+			`ticket.priceDiv(25)`,
+			4,
+		},
+		{
 			`1`,
 			int(1),
 		},
@@ -531,11 +496,11 @@ func TestExpr(t *testing.T) {
 			false,
 		},
 		{
-			`Int == 0 && Int32 == 0 && Int64 == 0 && Float64 == 0 && Bool && String == "string"`,
+			`int == 0 && int32 == 0 && int64 == 0 && float64 == 0 && bool && string == "string"`,
 			true,
 		},
 		{
-			`-Int64 == 0`,
+			`-int64 == 0`,
 			true,
 		},
 		{
@@ -547,39 +512,39 @@ func TestExpr(t *testing.T) {
 			true,
 		},
 		{
-			`Int + 0`,
+			`int + 0`,
 			0,
 		},
 		{
-			`Uint64 + 0`,
+			`uint64 + 0`,
 			int(0),
 		},
 		{
-			`Uint64 + Int64`,
+			`uint64 + int64`,
 			int64(0),
 		},
 		{
-			`Int32 + Int64`,
+			`int32 + int64`,
 			int64(0),
 		},
 		{
-			`Float64 + 0`,
+			`float64 + 0`,
 			float64(0),
 		},
 		{
-			`0 + Float64`,
+			`0 + float64`,
 			float64(0),
 		},
 		{
-			`0 <= Float64`,
+			`0 <= float64`,
 			true,
 		},
 		{
-			`Float64 < 1`,
+			`float64 < 1`,
 			true,
 		},
 		{
-			`Int < 1`,
+			`int < 1`,
 			true,
 		},
 		{
@@ -607,39 +572,31 @@ func TestExpr(t *testing.T) {
 			true,
 		},
 		{
-			`Int in 0..1`,
+			`int in 0..1`,
 			true,
 		},
 		{
-			`Int32 in 0..1`,
+			`int32 in 0..1`,
 			true,
 		},
 		{
-			`Int64 in 0..1`,
+			`int64 in 0..1`,
 			true,
 		},
 		{
-			`1 in [1, 2, 3] && "foo" in {foo: 0, bar: 1} && "Price" in Ticket`,
+			`1 in [1, 2, 3] && "foo" in {foo: 0, bar: 1} && "Price" in ticket`,
 			true,
 		},
-		// {
-		// 	`1 in [1.5] || 1 not in [1]`,
-		// 	false,
-		// },
-		// {
-		// 	`One in 0..1 && Two not in 0..1`,
-		// 	true,
-		// },
 		{
-			`Int32 in [10, 20]`,
+			`int32 in [10, 20]`,
 			false,
 		},
 		{
-			`String matches "s.+"`,
+			`string matches "s.+"`,
 			true,
 		},
 		{
-			`String matches ("^" + String + "$")`,
+			`string matches ("^" + string + "$")`,
 			true,
 		},
 		{
@@ -659,27 +616,19 @@ func TestExpr(t *testing.T) {
 			5,
 		},
 		{
-			`Ticket.Price`,
+			`ticket.price`,
 			100,
 		},
 		{
-			`Add(10, 5) + GetInt()`,
+			`add(10, 5) + getInt()`,
 			15,
-		},
-		{
-			`Ticket.String()`,
-			`$100`,
-		},
-		{
-			`Ticket.PriceDiv(25)`,
-			4,
 		},
 		{
 			`len([1, 2, 3])`,
 			3,
 		},
 		{
-			`len([1, Two, 3])`,
+			`len([1, two, 3])`,
 			3,
 		},
 		{
@@ -691,7 +640,7 @@ func TestExpr(t *testing.T) {
 			12,
 		},
 		{
-			`len(Array)`,
+			`len(array)`,
 			5,
 		},
 		{
@@ -739,7 +688,7 @@ func TestExpr(t *testing.T) {
 			10,
 		},
 		{
-			`Now.After(BirthDay)`,
+			`now.after(birthDay)`,
 			true,
 		},
 		{
@@ -747,11 +696,11 @@ func TestExpr(t *testing.T) {
 			true,
 		},
 		{
-			`Now.Sub(Now).String() == Duration("0s").String()`,
+			`now.sub(now).string() == duration("0s").string()`,
 			true,
 		},
 		{
-			`8.5 * Passengers.Adults * len(Segments)`,
+			`8.5 * passengers.adults * len(segments)`,
 			float64(17),
 		},
 		{
@@ -759,121 +708,105 @@ func TestExpr(t *testing.T) {
 			2,
 		},
 		{
-			`(One * Two) * Three == One * (Two * Three)`,
+			`(one * two) * three == one * (two * three)`,
 			true,
 		},
 		{
-			`Array[0]`,
+			`array[0]`,
 			1,
 		},
 		{
-			`Sum(Array)`,
-			15,
-		},
-		{
-			`Array[0] < Array[1]`,
+			`array[0] < array[1]`,
 			true,
 		},
 		{
-			`Sum(MultiDimArray[0])`,
+			`sum(multiDimArray[0])`,
 			6,
 		},
 		{
-			`Sum(MultiDimArray[0]) + Sum(MultiDimArray[1])`,
+			`sum(multiDimArray[0]) + sum(multiDimArray[1])`,
 			12,
 		},
 		{
-			`Inc(Array[0] + Array[1])`,
+			`inc(array[0] + array[1])`,
 			4,
 		},
 		{
-			`Array[0] + Array[1]`,
+			`array[0] + array[1]`,
 			3,
 		},
 		{
-			`Array[1:2]`,
+			`array[1:2]`,
 			[]int{2},
 		},
 		{
-			`Array[0:5] == Array`,
+			`array[0:5] == array`,
 			true,
 		},
 		{
-			`Array[0:] == Array`,
+			`array[0:] == array`,
 			true,
 		},
 		{
-			`Array[:5] == Array`,
+			`array[:5] == array`,
 			true,
 		},
 		{
-			`Array[:] == Array`,
+			`array[:] == array`,
 			true,
 		},
 		{
-			`1 + 2 + Three`,
+			`1 + 2 + three`,
 			6,
 		},
 		{
-			`MapArg({foo: "bar"})`,
+			`mapArg({foo: "bar"})`,
 			"bar",
 		},
 		{
-			`NilStruct`,
+			`nilStruct`,
 			(*time.Time)(nil),
-		},
-		{
-			`Nil == nil && nil == Nil && nil == nil && Nil == Nil && NilInt == nil && NilSlice == nil && NilStruct == nil`,
-			true,
 		},
 		{
 			`0 == nil || "str" == nil || true == nil`,
 			false,
 		},
 		{
-			`Variadic("head", 1, 2, 3)`,
+			`variadic("head", 1, 2, 3)`,
 			[]int{1, 2, 3},
 		},
 		{
-			`Variadic("empty")`,
-			[]int{},
-		},
-		{
-			`String[:]`,
+			`string[:]`,
 			"string",
 		},
 		{
-			`String[:3]`,
+			`string[:3]`,
 			"str",
 		},
 		{
-			`String[:9]`,
+			`string[:9]`,
 			"string",
 		},
 		{
-			`String[3:9]`,
+			`string[3:9]`,
 			"ing",
 		},
 		{
-			`String[7:9]`,
+			`string[7:9]`,
 			"",
 		},
 		{
-			`Float(0)`,
+			`float(0)`,
 			float64(0),
 		},
 		{
-			`map(filter(Tweets, {len(.Text) > 10}), {Format(.Date)})`,
-			[]interface{}{"23 Oct 17 18:30 UTC", "23 Oct 17 18:30 UTC"},
-		},
-		{
-			`Concat("a", 1, [])`,
+			`concat("a", 1, [])`,
 			`a1[]`,
 		},
 	}
 
 	for _, tt := range tests {
-		program, err := jsexpr.Compile(tt.code, jsexpr.Env(&mockEnv{}))
+		program, err := jsexpr.Compile(tt.code, jsexpr.TypeCheck(&mockEnv{}))
 		require.NoError(t, err, "compile error")
 
 		got, err := jsexpr.Run(program, env)
@@ -901,7 +834,7 @@ func TestExpr(t *testing.T) {
 }
 
 func TestExpr_eval_with_env(t *testing.T) {
-	_, err := jsexpr.Eval("true", jsexpr.Env(map[string]interface{}{}))
+	_, err := jsexpr.Eval("true", jsexpr.TypeCheck(map[string]interface{}{}))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "misused")
 }
@@ -912,22 +845,6 @@ func TestExpr_fetch_from_func(t *testing.T) {
 	})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "cannot fetch Value from func()")
-}
-
-func TestExpr_map_default_values(t *testing.T) {
-	env := map[string]interface{}{
-		"foo": map[string]string{},
-		"bar": map[string]*string{},
-	}
-
-	input := `foo['missing'] == '' && bar['missing'] == nil`
-
-	program, err := jsexpr.Compile(input, jsexpr.Env(env))
-	require.NoError(t, err)
-
-	output, err := jsexpr.Run(program, env)
-	require.NoError(t, err)
-	require.Equal(t, true, output)
 }
 
 func TestExpr_map_default_values_compile_check(t *testing.T) {
@@ -945,32 +862,9 @@ func TestExpr_map_default_values_compile_check(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		_, err := jsexpr.Compile(tt.input, jsexpr.Env(tt.env), jsexpr.AllowUndefinedVariables())
+		_, err := jsexpr.Compile(tt.input, jsexpr.TypeCheck(tt.env), jsexpr.AllowUndefinedVariables())
 		require.NoError(t, err)
 	}
-}
-
-func TestExpr_calls_with_nil(t *testing.T) {
-	env := map[string]interface{}{
-		"equals": func(a, b interface{}) interface{} {
-			assert.Nil(t, a, "a is not nil")
-			assert.Nil(t, b, "b is not nil")
-			return a == b
-		},
-		"is": is{},
-	}
-
-	p, err := jsexpr.Compile(
-		"a == nil && equals(b, nil) && is.Nil(c)",
-		jsexpr.Env(env),
-		jsexpr.Operator("==", "equals"),
-		jsexpr.AllowUndefinedVariables(),
-	)
-	require.NoError(t, err)
-
-	out, err := jsexpr.Run(p, env)
-	require.NoError(t, err)
-	require.Equal(t, true, out)
 }
 
 func TestExpr_call_floatarg_func_with_int(t *testing.T) {
@@ -992,7 +886,7 @@ func TestExpr_call_floatarg_func_with_int(t *testing.T) {
 	} {
 		p, err := jsexpr.Compile(
 			fmt.Sprintf("cnv(%s)", each.input),
-			jsexpr.Env(env))
+			jsexpr.TypeCheck(env))
 		require.NoError(t, err)
 
 		out, err := jsexpr.Run(p, env)
@@ -1008,7 +902,7 @@ func TestConstExpr_error(t *testing.T) {
 
 	_, err := jsexpr.Compile(
 		`1 + divide(1, 0)`,
-		jsexpr.Env(env),
+		jsexpr.TypeCheck(env),
 		jsexpr.ConstExpr("divide"),
 	)
 	require.Error(t, err)
@@ -1022,7 +916,7 @@ func TestConstExpr_error_wrong_type(t *testing.T) {
 
 	_, err := jsexpr.Compile(
 		`1 + divide(1, 0)`,
-		jsexpr.Env(env),
+		jsexpr.TypeCheck(env),
 		jsexpr.ConstExpr("divide"),
 	)
 	require.Error(t, err)
@@ -1040,8 +934,8 @@ func TestConstExpr_error_no_env(t *testing.T) {
 
 func TestPatch(t *testing.T) {
 	program, err := jsexpr.Compile(
-		`Ticket == "$100" and "$90" != Ticket + "0"`,
-		jsexpr.Env(mockEnv{}),
+		`ticket == "$100" and "$90" != ticket + "0"`,
+		jsexpr.TypeCheck(mockEnv{}),
 		jsexpr.Patch(&stringerPatcher{}),
 	)
 	require.NoError(t, err)
@@ -1056,8 +950,8 @@ func TestPatch(t *testing.T) {
 
 func TestPatch_length(t *testing.T) {
 	program, err := jsexpr.Compile(
-		`String.length == 5`,
-		jsexpr.Env(mockEnv{}),
+		`string.length == 5`,
+		jsexpr.TypeCheck(mockEnv{}),
 		jsexpr.Patch(&lengthPatcher{}),
 	)
 	require.NoError(t, err)
@@ -1105,32 +999,32 @@ func TestEval_exposed_error(t *testing.T) {
 
 func TestIssue105(t *testing.T) {
 	type A struct {
-		Field string
+		Field string `jsexpr:"field"`
 	}
 	type B struct {
-		Field int
+		Field int `jsexpr:"field"`
 	}
 	type C struct {
-		A
-		B
+		A `jsexpr:"a"`
+		B `jsexpr:"b"`
 	}
 	type Env struct {
-		C
+		C `jsexpr:"c"`
 	}
 
 	code := `
-		A.Field == '' &&
-		C.A.Field == '' &&
-		B.Field == 0 &&
-		C.B.Field == 0
+		a.field == '' &&
+		c.a.field == '' &&
+		b.field == 0 &&
+		c.b.field == 0
 	`
 
-	_, err := jsexpr.Compile(code, jsexpr.Env(Env{}))
+	_, err := jsexpr.Compile(code, jsexpr.TypeCheck(Env{}))
 	require.NoError(t, err)
 
-	_, err = jsexpr.Compile(`Field == ''`, jsexpr.Env(Env{}))
+	_, err = jsexpr.Compile(`field == ''`, jsexpr.TypeCheck(Env{}))
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "ambiguous identifier Field")
+	require.Contains(t, err.Error(), "ambiguous identifier field")
 }
 
 func TestIssue_nested_closures(t *testing.T) {
@@ -1147,11 +1041,11 @@ func TestIssue_nested_closures(t *testing.T) {
 func TestIssue138(t *testing.T) {
 	env := map[string]interface{}{}
 
-	_, err := jsexpr.Compile(`1 / (1 - 1)`, jsexpr.Env(env))
+	_, err := jsexpr.Compile(`1 / (1 - 1)`, jsexpr.TypeCheck(env))
 	require.Error(t, err)
 	require.Equal(t, "integer divide by zero (1:3)\n | 1 / (1 - 1)\n | ..^", err.Error())
 
-	_, err = jsexpr.Compile(`1 % 0`, jsexpr.Env(env))
+	_, err = jsexpr.Compile(`1 % 0`, jsexpr.TypeCheck(env))
 	require.Error(t, err)
 }
 
@@ -1159,28 +1053,31 @@ func TestIssue138(t *testing.T) {
 // Mock types
 //
 type mockEnv struct {
-	Any                  interface{}
-	Int, One, Two, Three int
-	Int32                int32
-	Int64                int64
-	Uint64               uint64
-	Float64              float64
-	Bool                 bool
-	String               string
-	Array                []int
-	MultiDimArray        [][]int
-	Sum                  func(list []int) int
-	Inc                  func(int) int
-	Ticket               *ticket
-	Passengers           *passengers
-	Segments             []*segment
-	BirthDay             time.Time
-	Now                  time.Time
-	Nil                  interface{}
-	NilStruct            *time.Time
-	NilInt               *int
-	NilSlice             []ticket
-	Tweets               []tweet
+	Nil           interface{}
+	NilStruct     *time.Time           `jsexpr:"nilStruct"`
+	NilInt        *int                 `jsexpr:"nilInt"`
+	NilSlice      []ticket             `jsexpr:"nilSlice"`
+	Any           interface{}          `jsexpr:"any"`
+	Int           int                  `jsexpr:"int"`
+	One           int                  `jsexpr:"one"`
+	Two           int                  `jsexpr:"two"`
+	Three         int                  `jsexpr:"three"`
+	Int32         int32                `jsexpr:"int32"`
+	Int64         int64                `jsexpr:"int64"`
+	Uint64        uint64               `jsexpr:"uint64"`
+	Float64       float64              `jsexpr:"float64"`
+	Bool          bool                 `jsexpr:"bool"`
+	String        string               `jsexpr:"string"`
+	Array         []int                `jsexpr:"array"`
+	MultiDimArray [][]int              `jsexpr:"multiDimArray"`
+	Sum           func(list []int) int `jsexpr:"sum"`
+	Inc           func(int) int        `jsexpr:"inc"`
+	Ticket        *ticket              `jsexpr:"ticket"`
+	Passengers    *passengers          `jsexpr:"passengers"`
+	Segments      []*segment           `jsexpr:"segments"`
+	BirthDay      time.Time            `jsexpr:"birthDay"`
+	Now           time.Time            `jsexpr:"now"`
+	Tweets        []tweet              `jsexpr:"tweets"`
 }
 
 func (e *mockEnv) GetInt() int {
@@ -1257,7 +1154,7 @@ func (*mockEnv) Float(i interface{}) float64 {
 func (*mockEnv) Format(t time.Time) string { return t.Format(time.RFC822) }
 
 type ticket struct {
-	Price int
+	Price int `jsexpr:"price"`
 }
 
 func (t *ticket) PriceDiv(p int) int {
@@ -1269,20 +1166,20 @@ func (t *ticket) String() string {
 }
 
 type passengers struct {
-	Adults   uint32
-	Children uint32
-	Infants  uint32
+	Adults   uint32 `jsexpr:"adults"`
+	Children uint32 `jsexpr:"children"`
+	Infants  uint32 `jsexpr:"infants"`
 }
 
 type segment struct {
-	Origin      string
-	Destination string
-	Date        time.Time
+	Origin      string    `jsexpr:"origin"`
+	Destination string    `jsexpr:"destination"`
+	Date        time.Time `jsexpr:"date"`
 }
 
 type tweet struct {
-	Text string
-	Date time.Time
+	Text string    `jsexpr:"text"`
+	Date time.Time `jsexpr:"date"`
 }
 
 type mockMapStringStringEnv map[string]string
@@ -1325,7 +1222,7 @@ func (p *stringerPatcher) Exit(node *ast.Node) {
 	if t.Implements(stringer) {
 		ast.Patch(node, &ast.MethodNode{
 			Node:   *node,
-			Method: "String",
+			Method: "string",
 		})
 	}
 
@@ -1376,7 +1273,7 @@ func Test_patcher1Index(t *testing.T) {
 
 	code := `list[-a]` // will output 3
 
-	program, err := jsexpr.Compile(code, jsexpr.Env(env), jsexpr.Patch(&patcher1{}))
+	program, err := jsexpr.Compile(code, jsexpr.TypeCheck(env), jsexpr.Patch(&patcher1{}))
 	if err != nil {
 		panic(err)
 	}
@@ -1391,14 +1288,180 @@ func Test_patcher1Index(t *testing.T) {
 
 // bytepower new feature test suite added below
 
+func TestDeleteLater(t *testing.T) {
+	input := `a.b.c < d.e.f`
+	env := deleteLaterEnv{
+		a{
+			b{
+				C: 10,
+			},
+		},
+		d{
+			e{
+				F: 11,
+			},
+		},
+	}
+	prg, err := jsexpr.Compile(input, jsexpr.TypeCheck(env))
+	assert.Nil(t, err)
+
+	out, err := jsexpr.Run(prg, env)
+	assert.Nil(t, err)
+	assert.Equal(t, true, out)
+}
+
+type deleteLaterEnv struct {
+	A a `jsexpr:"a"`
+	D d `jsexpr:"d"`
+}
+
+type a struct {
+	B b `jsexpr:"b"`
+}
+
+type b struct {
+	C int `jsexpr:"c"`
+}
+
+type d struct {
+	E e `jsexpr:"e"`
+}
+
+type e struct {
+	F int `jsexpr:"f"`
+}
+
 func TestBytepowerExpr(t *testing.T) {
 	type test struct {
 		input    string
 		expected interface{}
 		env      interface{}
 	}
+	testPanda := &panda{
+		Age: 10,
+	}
+
+	testKoala := &koala{
+		Origin: "earth",
+	}
 
 	tests := []test{
+		{
+			`Date.now() == "test"`,
+			true,
+			bpMockEnv2{
+				Date: dummy3{
+					Now: func() string { return "test" },
+				},
+			},
+		},
+		{
+			`Math.pow(2,3,4,5)`,
+			float64(8),
+			nil,
+		},
+		{
+			`Math.trunc(11.22)`,
+			float64(11),
+			nil,
+		},
+		{
+			`Math.ceil(3.2)`,
+			float64(4),
+			nil,
+		},
+		{
+			`Math.PI > 3`,
+			true,
+			nil,
+		},
+		{
+			`Math.E < 3`,
+			true,
+			nil,
+		},
+		{
+			`Date.now() > 0`,
+			true,
+			nil,
+		},
+		{
+			`Panda.age < 10`,
+			true,
+			bpMockEnv2{
+				Panda: panda{
+					Age: 8,
+				},
+			},
+		},
+		{
+			`koala.origin == "earth"`,
+			true,
+			bpMockEnv{
+				Koala: *testKoala,
+			},
+		},
+		{
+			`koala.HOWL()`,
+			"fuck australia!",
+			bpMockEnv{
+				Koala: koala{
+					Howl: func() string {
+						return "fuck australia!"
+					},
+				},
+			},
+		},
+		{
+			`koala.Age < 10`,
+			true,
+			&bpMockEnv{
+				Koala: koala{
+					Age: 9,
+				},
+			},
+		},
+		{
+			`panda.howl()`,
+			"i'm from China",
+			bpMockEnv{
+				Panda: *testPanda,
+			},
+		},
+		{
+			`panda.age > 10`,
+			false,
+			&bpMockEnv{
+				Panda: *testPanda,
+			},
+		},
+		{
+			`panda.age > 10`,
+			false,
+			&bpMockEnv{
+				Panda: panda{
+					Age: 8,
+				},
+			},
+		},
+		{
+			`panda.age > 10`,
+			true,
+			bpMockEnv{
+				Panda: panda{
+					Age: 11,
+				},
+			},
+		},
+		{
+			`panda.age`,
+			10,
+			bpMockEnv{
+				Panda: panda{
+					Age: 10,
+				},
+			},
+		},
 		{
 			`parseInt("10", 16)`,
 			16,
@@ -1462,12 +1525,14 @@ func TestBytepowerExpr(t *testing.T) {
 		},
 		{ // this is traditional Object.Property evaluation, neither PropertyProvider not ValueProvider are implemented
 			// to player Struct, thus, the `Level` property has to be capitalized as public-accessible property.
-			`Player.Level < 10`,
+			`player.level < 10`,
 			true,
 			bpMockEnv{
 				player{
 					Level: 1,
 				},
+				panda{},
+				koala{},
 			},
 		},
 		{ // this is BP implemented PropertyProvider and ValueProvider, as player's object -- `mockPlayer` matched PropertyProvider
@@ -1477,7 +1542,7 @@ func TestBytepowerExpr(t *testing.T) {
 			map[string]interface{}{"player": mockPlayer{}},
 		},
 		{
-			`player.level.Value < 10`,
+			`player.level.value < 10`,
 			true,
 			map[string]interface{}{"player": mockPlayer{}},
 		},
@@ -1493,28 +1558,6 @@ func TestBytepowerExpr(t *testing.T) {
 		out, err := jsexpr.Run(program, test.env)
 		assert.Nil(t, err)
 		assert.Equal(t, test.expected, out)
-	}
-}
-
-func TestBytepowerExprCompileError(t *testing.T) {
-	type test struct {
-		input string
-		env   interface{}
-	}
-	tests := []test{
-		{
-			`pigat.player.level > 10`,
-			map[string]interface{}{
-				"pigat": mockPigat{},
-			},
-			// reason: from upon expression, player is not an accessible property of mockPigat{}, thus this is an error,
-			// correct case: pass in a nil as env, instead of map
-			// TODO: leverage the design in goja, this kind of abc.def.ghi could use json struct field to call references.
-		},
-	}
-	for _, test := range tests {
-		_, err := jsexpr.Compile(test.input, jsexpr.Env(test.env))
-		assert.Error(t, err)
 	}
 }
 
@@ -1555,7 +1598,7 @@ func TestBytepowerExprRunError(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		prg, err := jsexpr.Compile(test.input, jsexpr.Env(nil))
+		prg, err := jsexpr.Compile(test.input, jsexpr.TypeCheck(nil))
 		assert.Nil(t, err)
 
 		_, err = jsexpr.Run(prg, test.env)
@@ -1606,7 +1649,7 @@ func (mP mockPlayer) FetchProperty(property string) interface{} {
 }
 
 type mockLevel struct {
-	Value int
+	Value int `jsexpr:"value"`
 }
 
 func (mL mockLevel) GetValue() interface{} {
@@ -1614,9 +1657,168 @@ func (mL mockLevel) GetValue() interface{} {
 }
 
 type player struct {
-	Level int
+	Level int `jsexpr:"level"`
 }
 
 type bpMockEnv struct {
-	Player player
+	Player player `jsexpr:"player"`
+	Panda  panda  `jsexpr:"panda"`
+	Koala  koala  `jsexpr:"koala"`
+}
+
+type panda struct {
+	Age int `jsexpr:"age"`
+}
+
+func (this panda) Howl() string {
+	return "i'm from China"
+}
+
+type koala struct {
+	Age    int           `jsexpr:"Age"`
+	Howl   func() string `jsexpr:"HOWL"`
+	Origin string        `jsexpr:"origin"`
+}
+
+type bpMockEnv2 struct {
+	Panda         panda    `jsexpr:"Panda"`
+	Date          dummy3   `jsexpr:"Date"`
+	RightTriangle triangle `jsexpr:"rightTriangle"`
+}
+
+type triangle struct {
+	Edge1 float64 `jsexpr:"edge1"`
+	Edge2 float64 `jsexpr:"edge2"`
+	Edge3 float64 `jsexpr:"edge3"`
+}
+
+type dummy3 struct {
+	Now func() string `jsexpr:"now"`
+}
+
+func TestOverflowedParams(t *testing.T) {
+	input := `sum(1,2,3,4,5,6)`
+	sum := func(nums ...int) int {
+		sum := 0
+		for _, num := range nums {
+			sum += num
+		}
+		return sum
+	}
+
+	var env struct {
+		Sum func(...int) int `jsexpr:"sum"`
+	}
+	env.Sum = sum
+
+	prg, err := jsexpr.Compile(input, jsexpr.TypeCheck(env))
+	assert.Nil(t, err)
+
+	out, err := jsexpr.Run(prg, env)
+	assert.Nil(t, err)
+	assert.Equal(t, 21, out)
+}
+
+func TestBytepowerBuiltinObject(t *testing.T) {
+	type test struct {
+		input    string
+		expected interface{}
+		env      interface{}
+	}
+	tests := []test{
+		{
+			`Math.hypot(rightTriangle.edge1, rightTriangle.edge2) == rightTriangle.edge3 ? "right triangle" : "normal triangle"`,
+			"right triangle",
+			&bpMockEnv2{
+				RightTriangle: triangle{
+					Edge1: 3,
+					Edge2: 4,
+					Edge3: 5,
+				},
+			},
+		},
+		{
+			`Math.max(a,b,c,d,e,f,g)`,
+			float64(7),
+			map[string]interface{}{
+				"a": 0,
+				"b": 1,
+				"c": 2,
+				"d": 3,
+				"e": 4,
+				"f": 7,
+				"g": 6,
+			},
+		},
+		{
+			`Math.hypot(rightTriangle.edge1, rightTriangle.edge2) == rightTriangle.edge3`,
+			true,
+			&bpMockEnv2{
+				RightTriangle: triangle{
+					Edge1: 3,
+					Edge2: 4,
+					Edge3: 5,
+				},
+			},
+		},
+		{
+			`parseTime(Date.now()).year()`,
+			2021,
+			map[string]interface{}{
+				"parseTime": parseTime,
+			},
+		},
+		{
+			`Math.ceil("0.95", "i", "don't", "give", "a", "fxxx", 3, "or", 4, "params are passed")`,
+			float64(1),
+			nil,
+		},
+		{
+			`Math.ceil(f)`,
+			float64(1),
+			map[string]interface{}{
+				"f": "0.95",
+			},
+		},
+		{
+			`Math.ceil(f)`,
+			float64(1),
+			map[string]interface{}{
+				"f": float64(0.95),
+			},
+		},
+		{
+			`Math.abs(4.5) + Math.abs(-.5)`,
+			float64(5),
+			nil,
+		},
+		{
+			`Math.cos(0.8) > 0.6435`,
+			true,
+			nil,
+		},
+		{
+			`Math.atanh(1)`,
+			math.Inf(+1),
+			nil,
+		},
+		{
+			`Math.cbrt(-64)`,
+			float64(-4),
+			nil,
+		},
+	}
+
+	for _, test := range tests {
+		prg, err := jsexpr.Compile(test.input)
+		assert.Nil(t, err)
+
+		out, err := jsexpr.Run(prg, test.env)
+		assert.Nil(t, err)
+		assert.Equal(t, test.expected, out)
+	}
+}
+
+func parseTime(unixTS int64) time.Time {
+	return time.Unix(unixTS, 0)
 }

@@ -15,7 +15,7 @@ func TestExamples_dates(t *testing.T) {
 	`
 
 	options := []jsexpr.Option{
-		jsexpr.Env(Env{}),
+		jsexpr.TypeCheck(Env{}),
 
 		// Operators override for date comprising.
 		jsexpr.Operator("==", "Equal"),

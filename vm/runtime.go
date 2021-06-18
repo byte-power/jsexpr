@@ -6,7 +6,49 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+
+	"github.com/byte-power/jsexpr/utility"
 )
+
+type fieldReflection struct {
+	value reflect.Value
+
+	nestedFieldReflections map[string]fieldReflection
+}
+
+func structReflection(root reflect.Value) map[string]fieldReflection {
+	m := make(map[string]fieldReflection)
+	t := root.Type()
+	for i := 0; i < root.NumField(); i++ {
+		fieldValue := root.Field(i)
+		field := t.Field(i)
+		fieldKind := fieldValue.Kind()
+		fieldRef := fieldReflection{
+			value: fieldValue,
+		}
+		if fieldKind == reflect.Ptr {
+			fieldKind = reflect.Indirect(fieldValue).Kind()
+			fieldValue = reflect.Indirect(fieldValue)
+		}
+		nested := make(map[string]fieldReflection)
+		if fieldKind == reflect.Struct {
+			if field.Anonymous {
+				for k, v := range structReflection(fieldValue) {
+					m[k] = v
+				}
+			} else {
+				nested = structReflection(fieldValue)
+			}
+		}
+		fieldRef.nestedFieldReflections = nested
+		fieldName := field.Name
+		if tag := field.Tag.Get(utility.StructTagKey); tag != "" {
+			fieldName = tag
+		}
+		m[fieldName] = fieldRef
+	}
+	return m
+}
 
 type Call struct {
 	Name string `msgpack:"name"`
@@ -22,49 +64,6 @@ type Call struct {
 // }
 
 type Scope map[string]interface{}
-
-func fetch(from interface{}, i interface{}) interface{} {
-	v := reflect.ValueOf(from)
-	kind := v.Kind()
-
-	// Structures can be access through a pointer or through a value, when they
-	// are accessed through a pointer we don't want to copy them to a value.
-	if kind == reflect.Ptr && reflect.Indirect(v).Kind() == reflect.Struct {
-		v = reflect.Indirect(v)
-		kind = v.Kind()
-	}
-
-	switch kind {
-
-	case reflect.Array, reflect.Slice, reflect.String:
-		value := v.Index(toInt(i))
-		if value.IsValid() && value.CanInterface() {
-			return value.Interface()
-		}
-
-	case reflect.Map:
-		value := v.MapIndex(reflect.ValueOf(i))
-		if value.IsValid() {
-			if value.CanInterface() {
-				return value.Interface()
-			}
-		} else {
-			elem := reflect.TypeOf(from).Elem()
-			return reflect.Zero(elem).Interface()
-		}
-
-	case reflect.Struct:
-		if provider, ok := from.(PropertyProvider); ok {
-			return provider.FetchProperty(reflect.ValueOf(i).String())
-		}
-		value := v.FieldByName(reflect.ValueOf(i).String())
-		if value.IsValid() && value.CanInterface() {
-			return value.Interface()
-		}
-	}
-
-	panic(fmt.Sprintf("cannot fetch %v from %T", i, from))
-}
 
 func slice(array, from, to interface{}) interface{} {
 	v := reflect.ValueOf(array)
