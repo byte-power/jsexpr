@@ -1347,6 +1347,11 @@ func TestBytepowerExpr(t *testing.T) {
 
 	tests := []test{
 		{
+			`Date.now() > 0`,
+			true,
+			nil,
+		},
+		{
 			`Date.now() == "test"`,
 			true,
 			bpMockEnv2{
@@ -1377,11 +1382,6 @@ func TestBytepowerExpr(t *testing.T) {
 		},
 		{
 			`Math.E < 3`,
-			true,
-			nil,
-		},
-		{
-			`Date.now() > 0`,
 			true,
 			nil,
 		},
@@ -1819,6 +1819,53 @@ func TestBytepowerBuiltinObject(t *testing.T) {
 	}
 }
 
+func TestJSArrayIndex(t *testing.T) {
+	// input := `len(["1","2"]) > index+1 ? ["1", "2"][index] : ""`
+	input := `1 || 2`
+	prg, err := jsexpr.Compile(input)
+	assert.Nil(t, err)
+
+	m := map[string]interface{}{
+		"index": 2,
+	}
+	out, err := jsexpr.Run(prg, m)
+	assert.Nil(t, err)
+	assert.Equal(t, "", out)
+}
+
 func parseTime(unixTS int64) time.Time {
 	return time.Unix(unixTS, 0)
+}
+
+func TestDateNow(t *testing.T) {
+	input := `Date.now()`
+	prg, err := jsexpr.Compile(input)
+	assert.Nil(t, err)
+
+	env := map[string]interface{}{
+		"foo": "bar",
+	}
+	out, err := jsexpr.Run(prg, env)
+	assert.Nil(t, err)
+	assert.Equal(t, "", out)
+}
+
+func TestParseInt(t *testing.T) {
+	input := `parseInt("11")`
+	_, err := jsexpr.Compile(input)
+	assert.Nil(t, err)
+	// tree, err := parser.Parse(input)
+	// assert.Nil(t, err)
+
+	// prg, err := compiler.Compile(tree, nil)
+	// assert.Nil(t, err)
+
+	// env := map[string]interface{}{
+	// 	"parseInt": func(a int) string {
+	// 		return "hello"
+	// 	},
+	// }
+	// out, err := jsexpr.Run(prg, env)
+	// assert.Nil(t, err)
+	// assert.Equal(t, "", out)
 }
