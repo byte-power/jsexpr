@@ -1849,3 +1849,23 @@ func TestDateNow(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "", out)
 }
+
+func TestParseInt(t *testing.T) {
+	input := `parseInt("11")`
+	_, err := jsexpr.Compile(input)
+	assert.Nil(t, err)
+	// tree, err := parser.Parse(input)
+	// assert.Nil(t, err)
+
+	// prg, err := compiler.Compile(tree, nil)
+	// assert.Nil(t, err)
+
+	// env := map[string]interface{}{
+	// 	"parseInt": func(a int) string {
+	// 		return "hello"
+	// 	},
+	// }
+	// out, err := jsexpr.Run(prg, env)
+	// assert.Nil(t, err)
+	// assert.Equal(t, "", out)
+}

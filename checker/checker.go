@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/byte-power/jsexpr/ast"
+	"github.com/byte-power/jsexpr/builtin"
 	"github.com/byte-power/jsexpr/conf"
 	"github.com/byte-power/jsexpr/file"
 	"github.com/byte-power/jsexpr/parser"
@@ -530,6 +531,11 @@ func (v *visitor) BuiltinNode(node *ast.BuiltinNode) reflect.Type {
 		return v.error(node.Arguments[1], "closure should has one input and one output param")
 
 	default:
+		// if more builtin funcs are coming in the future, or above non-JS builtins are removing
+		// these builtin funcs shall be refactored to fulfill a `Checker` interface
+		if _, ok := builtin.Funcs()[node.Name]; ok {
+			return interfaceType
+		}
 		return v.error(node, "unknown builtin %v", node.Name)
 	}
 }
