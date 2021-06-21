@@ -185,5 +185,5 @@ func jsMin(nums ...float64) float64 {
 }
 
 func now() int64 {
-	return time.Now().Unix()
+	return time.Now().UnixNano() / 1_000_000 // Millisecond
 }
